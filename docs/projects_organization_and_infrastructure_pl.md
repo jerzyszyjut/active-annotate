@@ -90,7 +90,7 @@
     - Umiejętności: Backend, devops i machine learning
     - Obszary odpowiedzialności: Utrzymywanie infrastruktury projektu, rozwój platformy, inżyniera wymagań 
 - Hubert Malinowski (mail):
-    - Umiejętności: Projektowanie rozwiązań uczenia maszynowego, prowadzenie badań i przeglądu literatury
+    - Umiejętności: Backend, machine learning i software testing
     - Obszary odpowiedzialności: Przegląd i wybór rozwiązań projektowych, rozwój i testowanie platformy
 
 **Forma pracy:** Praca w stacjonarnie
