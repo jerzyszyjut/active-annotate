@@ -92,6 +92,9 @@
 - Hubert Malinowski (mail):
     - Umiejętności: Backend, machine learning i software testing
     - Obszary odpowiedzialności: Przegląd i wybór rozwiązań projektowych, rozwój i testowanie platformy
+- dr inż. Tomasz Dziubich (mail)
+    - Umiejętności: Machine learning, zarządzanie projektami B+R 
+    - Obszary odpowiedzialności: Nadzór pracy projektu, ekspertyza przy podejmowaniu decyzji strategicznych dla projektu
 
 **Forma pracy:** Praca w stacjonarnie
 
