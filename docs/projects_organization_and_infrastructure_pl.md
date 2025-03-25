@@ -86,13 +86,13 @@
 
 ## 3. Zespół
 **Członkowie zespołu i ich role:**
-- Jerzy Szyjut (mail):
+- Jerzy Szyjut (mail) - Programista, kierownik projektu:
     - Umiejętności: Backend, devops i machine learning
     - Obszary odpowiedzialności: Utrzymywanie infrastruktury projektu, rozwój platformy, inżyniera wymagań 
-- Hubert Malinowski (mail):
+- Hubert Malinowski (mail) - Programista:
     - Umiejętności: Backend, machine learning i software testing
     - Obszary odpowiedzialności: Przegląd i wybór rozwiązań projektowych, rozwój i testowanie platformy
-- dr inż. Tomasz Dziubich (mail)
+- dr inż. Tomasz Dziubich (mail) - Opiekun projektu:
     - Umiejętności: Machine learning, zarządzanie projektami B+R 
     - Obszary odpowiedzialności: Nadzór pracy projektu, ekspertyza przy podejmowaniu decyzji strategicznych dla projektu
 
