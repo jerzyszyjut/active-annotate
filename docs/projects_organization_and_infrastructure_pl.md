@@ -1,4 +1,4 @@
-# Organizacja i infrastruktura projektu
+# Organizacja i infrastruktura projektu v 1.0.1
 
 ## 1. Opis projektu i produktu
 **Nazwa projektu/produktu:** ActiveLabel - Platforma do oznaczania danych dla projektów uczenia maszynowego
