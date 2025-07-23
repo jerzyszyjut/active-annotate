@@ -1,0 +1,10 @@
+{
+  "venvPath": "/path/to/your/virtualenvs",
+  "venv": "your-venv-name",
+  "comments": [
+    "Copy this file to pyrightconfig.json and update the paths for your environment",
+    "For pipenv users, you can find your venv path with: pipenv --venv",
+    "The venvPath should be the parent directory of your virtual environment",
+    "The venv should be the name of your specific virtual environment folder"
+  ]
+}

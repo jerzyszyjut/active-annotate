@@ -83,7 +83,7 @@ pythonVersion = "3.12"
 pythonPlatform = "Linux"
 
 # Include and exclude patterns
-include = ["src", "tests"]
+include = ["app", "tests"]
 exclude = [
   "**/node_modules",
   "**/__pycache__",

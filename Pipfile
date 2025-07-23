@@ -8,7 +8,13 @@ sphinx = "*"
 pre-commit = "*"
 ruff = "*"
 pyright = "*"
+httpx = "*"
+pytest-asyncio = "*"
 pytest = "*"
+pydantic = "*"
+pydantic-settings = "*"
+uvicorn = "*"
+fastapi = {extras = ["standard"], version = "*"}
 
 [dev-packages]
 

@@ -3,177 +3,138 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Active Annotate documentation
+Active Annotate Documentation
 =============================
 
-Add your content using ``reStructuredText`` syntax. See the
-`reStructuredText <https://www.sphinx-doc.org/en/master/usage/restructuredtext/index.html>`_
-documentation for details.
+Welcome to the **Active Annotate** project documentation. This is a backend API for managing active learning annotation projects, built with FastAPI and modern Python development practices.
 
 .. note::
 
    This project is under active development.
 
-Installation and Setup
-======================
+Project Overview
+================
 
-Setting up Python Environment with Pipenv
--------------------------------------------
+Active Annotate is designed to facilitate active learning workflows for data annotation projects. The API provides endpoints for managing annotation tasks, datasets, and machine learning model integration.
 
-This project uses `pipenv` for dependency management. Follow these steps to set up the development environment:
+**Key Features:**
 
-Prerequisites
-~~~~~~~~~~~~~
+- **FastAPI Framework** - Modern, fast web framework for building APIs
+- **Async Support** - Built for high-performance asynchronous operations
+- **Type Safety** - Full type hints and validation with Pydantic
+- **Developer Tools** - Pre-commit hooks, linting, and formatting with Ruff
+- **Testing** - Comprehensive test suite with pytest and async testing support
+- **Documentation** - Auto-generated docs with Sphinx
 
-Make sure you have Python 3.12 and pipenv installed on your system:
+Quick Start
+===========
 
-.. code-block:: bash
+1. **Install dependencies:**
 
-   # Install pipenv if you don't have it
-   pipx install pipenv
+   .. code-block:: bash
 
-   # Verify Python version
-   python --version
+      pipenv install
 
-Installing Dependencies
-~~~~~~~~~~~~~~~~~~~~~~~
+2. **Activate environment:**
 
-1. Clone the repository and navigate to the project directory
-2. Install all dependencies using pipenv:
+   .. code-block:: bash
 
-.. code-block:: bash
+      pipenv shell
 
-   # Install dependencies from Pipfile
-   pipenv install
+3. **Run the application:**
 
+   .. code-block:: bash
 
-3. Activate the virtual environment:
+      pipenv run uvicorn app.main:app --reload
 
-.. code-block:: bash
+4. **Run tests:**
 
-   # Activate the pipenv shell
-   pipenv shell
+   .. code-block:: bash
 
-   # Or run commands in the environment without activating
-   pipenv run <command>
+      pipenv run pytest
 
-Setting up Pre-commit Hooks
-----------------------------
+Project Structure
+=================
 
-This project uses pre-commit hooks to maintain code quality. Set them up after installing dependencies:
+.. code-block::
 
-Installing Pre-commit Hooks
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   active-annotate/
+   ├── app/                    # Application source code
+   │   ├── main.py            # FastAPI application entry point
+   │   ├── api/               # API routes and endpoints
+   │   └── core/              # Core configuration and settings
+   ├── tests/                 # Test suite
+   │   ├── conftest.py        # Test configuration and fixtures
+   │   └── test_*.py          # Test modules
+   ├── docs/                  # Documentation source files
+   ├── Pipfile               # Python dependencies
+   └── pyproject.toml        # Project configuration
 
-1. Make sure you're in the activated pipenv environment:
-
-.. code-block:: bash
-
-   pipenv shell
-
-2. Install the pre-commit hooks:
-
-.. code-block:: bash
-
-   pre-commit install
-
-3. (Optional) Run pre-commit on all files to check the setup:
-
-.. code-block:: bash
-
-   pre-commit run --all-files
-
-What Pre-commit Does
-~~~~~~~~~~~~~~~~~~~~
-
-Pre-commit hooks will automatically run before each commit to:
-
-- **Trailing whitespace removal** - Removes unnecessary whitespace at line ends
-- **End-of-file fixing** - Ensures files end with a newline
-- **YAML validation** - Checks YAML files for syntax errors
-- **Large file detection** - Prevents accidentally committing large files
-- **Python linting and formatting** - Uses Ruff for code quality (see below)
-
-If any hooks fail, the commit will be blocked until you fix the issues.
-
-Code Quality with Ruff
------------------------
-
-This project uses `Ruff <https://docs.astral.sh/ruff/>`_ for Python linting and code formatting. Ruff is an extremely fast Python linter and code formatter written in Rust.
-
-What Ruff Does
-~~~~~~~~~~~~~~
-
-Ruff performs two main functions:
-
-1. **Linting** - Identifies code quality issues, potential bugs, and style violations
-2. **Formatting** - Automatically formats code to maintain consistent style
-
-Running Ruff Manually
-~~~~~~~~~~~~~~~~~~~~~~
-
-You can run Ruff manually outside of pre-commit hooks:
-
-.. code-block:: bash
-
-   # Activate pipenv environment
-   pipenv shell
-
-   # Run linting on all Python files
-   pipenv run ruff check .
-
-   # Run linting with automatic fixes
-   pipenv run ruff check . --fix
-
-   # Format all Python files
-   pipenv run ruff format .
-
-   # Check specific files or directories
-   pipenv run ruff check src/
-   pipenv run ruff format src/
-
-Ruff Configuration
-~~~~~~~~~~~~~~~~~~
-
-Ruff is configured through the pre-commit hooks in ``.pre-commit-config.yaml``:
-
-- **ruff check** - Runs linting with ``--fix`` to automatically fix issues when possible
-- **ruff format** - Formats Python code according to style guidelines
-
-The hooks run on Python files (``.py``) and Python interface files (``.pyi``).
-
-Common Ruff Commands
-~~~~~~~~~~~~~~~~~~~~
-
-.. code-block:: bash
-
-   # Check for issues without fixing
-   pipenv run ruff check .
-
-   # Fix all auto-fixable issues
-   pipenv run ruff check . --fix
-
-   # Format code
-   pipenv run ruff format .
-
-   # Check and format in one go
-   pipenv run ruff check . --fix && pipenv run ruff format .
-
-   # Show what would be changed without making changes
-   pipenv run ruff format . --diff
-
-Integration with Pre-commit
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-When you commit code, Ruff will automatically:
-
-1. Run linting checks and apply automatic fixes
-2. Format your code according to project standards
-3. Fail the commit if there are issues that can't be auto-fixed
-
-This ensures all committed code maintains consistent quality and style.
-
+Documentation Sections
+=======================
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
+   :caption: Getting Started:
+
+   installation
+   development
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Development:
+
+   testing
+   documentation
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Reference:
+
+   api
+
+API Reference
+=============
+
+This project uses FastAPI's built-in OpenAPI documentation instead of maintaining separate API docs:
+
+**Interactive Documentation:**
+- **Swagger UI**: Start the app and visit ``http://localhost:8000/docs``
+- **ReDoc**: Start the app and visit ``http://localhost:8000/redoc``
+
+**Benefits:**
+- Always up-to-date with the actual code
+- Interactive testing interface
+- Automatic schema generation
+- Zero maintenance overhead
+
+For application configuration and setup details, see the :doc:`api` section.
+
+Contributing
+============
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Run tests and ensure they pass
+5. Run pre-commit hooks to ensure code quality
+6. Submit a pull request
+
+The project uses:
+
+- **Pre-commit hooks** for code quality enforcement
+- **Ruff** for linting and formatting
+- **pytest** for testing
+- **Type hints** throughout the codebase
+
+License
+=======
+
+This project is under active development. License information will be added soon.
+
+Indices and tables
+==================
+
+* :ref:`genindex`
+* :ref:`modindex`
+* :ref:`search`
