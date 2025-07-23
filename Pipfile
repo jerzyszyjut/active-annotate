@@ -1,0 +1,22 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+sphinx = "*"
+pre-commit = "*"
+ruff = "*"
+pyright = "*"
+httpx = "*"
+pytest-asyncio = "*"
+pytest = "*"
+pydantic = "*"
+pydantic-settings = "*"
+uvicorn = "*"
+fastapi = {extras = ["standard"], version = "*"}
+
+[dev-packages]
+
+[requires]
+python_version = "3.12"

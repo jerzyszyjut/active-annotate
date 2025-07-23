@@ -1,0 +1,4 @@
+docs/_build
+.env
+__pycache__/
+pyrightconfig.json
