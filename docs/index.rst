@@ -88,28 +88,90 @@ What Pre-commit Does
 
 Pre-commit hooks will automatically run before each commit to:
 
-- Check code formatting
-- Lint code for potential issues
-- Ensure consistent code style
-- Run other quality checks as configured
+- **Trailing whitespace removal** - Removes unnecessary whitespace at line ends
+- **End-of-file fixing** - Ensures files end with a newline
+- **YAML validation** - Checks YAML files for syntax errors
+- **Large file detection** - Prevents accidentally committing large files
+- **Python linting and formatting** - Uses Ruff for code quality (see below)
 
 If any hooks fail, the commit will be blocked until you fix the issues.
 
-Updating Dependencies
----------------------
+Code Quality with Ruff
+-----------------------
 
-To update project dependencies:
+This project uses `Ruff <https://docs.astral.sh/ruff/>`_ for Python linting and code formatting. Ruff is an extremely fast Python linter and code formatter written in Rust.
+
+What Ruff Does
+~~~~~~~~~~~~~~
+
+Ruff performs two main functions:
+
+1. **Linting** - Identifies code quality issues, potential bugs, and style violations
+2. **Formatting** - Automatically formats code to maintain consistent style
+
+Running Ruff Manually
+~~~~~~~~~~~~~~~~~~~~~~
+
+You can run Ruff manually outside of pre-commit hooks:
 
 .. code-block:: bash
 
-   # Update all dependencies to latest compatible versions
-   pipenv update
+   # Activate pipenv environment
+   pipenv shell
 
-   # Update a specific package
-   pipenv update <package-name>
+   # Run linting on all Python files
+   pipenv run ruff check .
 
-   # Add a new dependency
-   pipenv install <package-name>
+   # Run linting with automatic fixes
+   pipenv run ruff check . --fix
+
+   # Format all Python files
+   pipenv run ruff format .
+
+   # Check specific files or directories
+   pipenv run ruff check src/
+   pipenv run ruff format src/
+
+Ruff Configuration
+~~~~~~~~~~~~~~~~~~
+
+Ruff is configured through the pre-commit hooks in ``.pre-commit-config.yaml``:
+
+- **ruff check** - Runs linting with ``--fix`` to automatically fix issues when possible
+- **ruff format** - Formats Python code according to style guidelines
+
+The hooks run on Python files (``.py``) and Python interface files (``.pyi``).
+
+Common Ruff Commands
+~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: bash
+
+   # Check for issues without fixing
+   pipenv run ruff check .
+
+   # Fix all auto-fixable issues
+   pipenv run ruff check . --fix
+
+   # Format code
+   pipenv run ruff format .
+
+   # Check and format in one go
+   pipenv run ruff check . --fix && pipenv run ruff format .
+
+   # Show what would be changed without making changes
+   pipenv run ruff format . --diff
+
+Integration with Pre-commit
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When you commit code, Ruff will automatically:
+
+1. Run linting checks and apply automatic fixes
+2. Format your code according to project standards
+3. Fail the commit if there are issues that can't be auto-fixed
+
+This ensures all committed code maintains consistent quality and style.
 
 
 .. toctree::
