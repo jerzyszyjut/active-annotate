@@ -53,3 +53,18 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
 html_theme = "alabaster"
 html_static_path = ["_static"]
+
+# GitHub Pages configuration
+html_baseurl = "https://jerzyszyjut.github.io/active-annotate/"
+
+# Theme options for better GitHub Pages integration
+html_theme_options = {
+    "github_user": "jerzyszyjut",
+    "github_repo": "active-annotate",
+    "github_banner": True,
+    "github_button": True,
+    "github_type": "star",
+    "show_powered_by": False,
+    "sidebar_width": "300px",
+    "page_width": "1200px",
+}
