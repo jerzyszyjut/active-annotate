@@ -76,3 +76,68 @@ docstring-code-format = false
 # This only has an effect when the `docstring-code-format` setting is
 # enabled.
 docstring-code-line-length = "dynamic"
+
+[tool.pyright]
+# Python version and platform
+pythonVersion = "3.12"
+pythonPlatform = "Linux"
+
+# Include and exclude patterns
+include = ["src", "tests"]
+exclude = [
+  "**/node_modules",
+  "**/__pycache__",
+  "**/.*",
+  "docs/_build",
+  "docs",
+  "build",
+  "dist",
+  ".venv",
+  "venv",
+]
+
+# Type checking mode
+typeCheckingMode = "standard" # Options: "off", "basic", "standard", "strict"
+
+# Reporting options
+reportMissingImports = true
+# reportMissingTypeStubs = false
+reportImportCycles = true
+reportUnusedImport = true
+reportUnusedClass = "warning"
+reportUnusedFunction = "warning"
+reportUnusedVariable = "warning"
+reportDuplicateImport = true
+reportWildcardImportFromLibrary = "warning"
+reportOptionalSubscript = "warning"
+reportOptionalMemberAccess = "warning"
+reportOptionalCall = "warning"
+reportOptionalIterable = "warning"
+reportOptionalContextManager = "warning"
+reportOptionalOperand = "warning"
+reportTypedDictNotRequiredAccess = "warning"
+
+# Additional strict checks (uncomment as needed)
+reportConstantRedefinition = true
+reportIncompatibleMethodOverride = true
+reportIncompatibleVariableOverride = true
+reportUntypedFunctionDecorator = true
+reportUntypedClassDecorator = true
+reportUntypedBaseClass = true
+reportUntypedNamedTuple = true
+
+# Stub options
+stubPath = "typings"
+useLibraryCodeForTypes = true
+
+# Other options
+autoSearchPaths = true
+extraPaths = []
+verboseOutput = false
+
+# Execution environments
+[[tool.pyright.executionEnvironments]]
+root = "."
+pythonVersion = "3.12"
+pythonPlatform = "Linux"
+extraPaths = []
