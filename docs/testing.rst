@@ -32,10 +32,35 @@ Key Components:
 Running Tests
 -------------
 
-Basic Test Commands
-~~~~~~~~~~~~~~~~~~~
+Docker Testing (Recommended)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Run all tests:
+Using Docker for testing ensures consistent test environments:
+
+.. code-block:: bash
+
+   # Run all tests
+   make test
+
+   # Run tests with coverage report
+   make test-cov
+
+   # Run tests with Docker Compose directly
+   docker compose -f docker-compose.dev.yml exec api-dev pytest
+
+   # Run tests with verbose output
+   docker compose -f docker-compose.dev.yml exec api-dev pytest -v
+
+   # Run tests in a specific file
+   docker compose -f docker-compose.dev.yml exec api-dev pytest tests/test_health.py
+
+   # Run a specific test function
+   docker compose -f docker-compose.dev.yml exec api-dev pytest tests/test_health.py::TestHealthEndpoint::test_health_endpoint_returns_200
+
+Local Testing with Pipenv
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+For local development setup:
 
 .. code-block:: bash
 
@@ -57,7 +82,17 @@ Run all tests:
 Test Output and Coverage
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-Run tests with additional output options:
+Docker testing with coverage:
+
+.. code-block:: bash
+
+   # Run tests with coverage (generates HTML, XML, and terminal reports)
+   make test-cov
+
+   # View coverage report in browser (after running test-cov)
+   # Open htmlcov/index.html in your browser
+
+Local testing with additional options:
 
 .. code-block:: bash
 
@@ -191,6 +226,29 @@ Environment Isolation
 
 Common Test Commands Summary
 ----------------------------
+
+Docker Commands (Recommended)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: bash
+
+   # Basic testing
+   make test                           # Run all tests
+   make test-cov                       # Run tests with coverage report
+
+   # Using Docker Compose directly
+   docker compose -f docker-compose.dev.yml exec api-dev pytest                    # Run all tests
+   docker compose -f docker-compose.dev.yml exec api-dev pytest -v                # Verbose output
+   docker compose -f docker-compose.dev.yml exec api-dev pytest -s                # Show print statements
+   docker compose -f docker-compose.dev.yml exec api-dev pytest -x                # Stop on first failure
+
+   # Specific test selection
+   docker compose -f docker-compose.dev.yml exec api-dev pytest tests/test_health.py                      # Run specific file
+   docker compose -f docker-compose.dev.yml exec api-dev pytest -k "health"                               # Run tests matching pattern
+   docker compose -f docker-compose.dev.yml exec api-dev pytest tests/test_health.py::TestHealthEndpoint  # Run specific class
+
+Local Commands (Pipenv)
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: bash
 

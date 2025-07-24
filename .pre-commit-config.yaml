@@ -5,7 +5,9 @@ repos:
     rev: v5.0.0
     hooks:
     -   id: trailing-whitespace
+        exclude: ^alembic/versions/
     -   id: end-of-file-fixer
+        exclude: ^alembic/versions/
     -   id: check-yaml
     -   id: check-added-large-files
 -   repo: https://github.com/astral-sh/ruff-pre-commit
@@ -14,9 +16,12 @@ repos:
     - id: ruff
       types_or: [ python, pyi ]
       args: [ --fix ]
+      exclude: ^alembic/versions/
     - id: ruff-format
       types_or: [ python, pyi ]
+      exclude: ^alembic/versions/
 -   repo: https://github.com/RobertCraigie/pyright-python
     rev: v1.1.403
     hooks:
     - id: pyright
+      exclude: ^alembic/versions/

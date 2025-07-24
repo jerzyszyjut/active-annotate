@@ -29,11 +29,33 @@ Active Annotate is designed to facilitate active learning workflows for data ann
 Quick Start
 ===========
 
+Docker (Recommended)
+~~~~~~~~~~~~~~~~~~~~~
+
+1. **Start development environment:**
+
+   .. code-block:: bash
+
+      make up
+
+2. **Run database migrations:**
+
+   .. code-block:: bash
+
+      make migrate
+
+3. **Access the application:**
+   - API: http://localhost:8000
+   - API Documentation: http://localhost:8000/docs
+
+Alternative: Local Development
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 1. **Install dependencies:**
 
    .. code-block:: bash
 
-      pipenv install
+      pipenv install --dev
 
 2. **Activate environment:**
 
@@ -78,6 +100,7 @@ Documentation Sections
    :caption: Getting Started:
 
    installation
+   docker
    development
 
 .. toctree::

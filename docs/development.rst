@@ -1,8 +1,83 @@
 Development Environment
 =======================
 
+Docker Development (Recommended)
+---------------------------------
+
+The recommended development approach uses Docker for consistency and ease of setup. All development tools and commands are available through the Makefile.
+
+Quick Development Workflow
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+1. **Start the development environment:**
+
+.. code-block:: bash
+
+   make up
+
+2. **Make code changes** (files are mounted as volumes, so changes are reflected immediately)
+
+3. **Run tests:**
+
+.. code-block:: bash
+
+   make test
+
+4. **Check code quality:**
+
+.. code-block:: bash
+
+   make lint      # Check for linting issues
+   make format    # Format code
+   make typecheck # Run type checking
+
+5. **Create database migrations when needed:**
+
+.. code-block:: bash
+
+   make migration MSG="Add new table"
+   make migrate
+
+Available Development Commands
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: bash
+
+   # Environment management
+   make up          # Start development environment
+   make down        # Stop environment
+   make logs        # View all logs
+   make logs-api    # View API logs only
+   make logs-db     # View database logs only
+
+   # Container access
+   make shell       # Access API container shell
+   make shell-db    # Access database shell
+
+   # Testing
+   make test        # Run tests
+   make test-cov    # Run tests with coverage report
+
+   # Code quality
+   make format      # Format code with Ruff
+   make lint        # Lint code with Ruff
+   make typecheck   # Run Pyright type checking
+
+   # Database operations
+   make migrate     # Run database migrations
+   make migration MSG="description"  # Create new migration
+   make reset-db    # Reset database (removes all data)
+
+   # Cleanup
+   make clean       # Remove all containers, volumes and images
+
+Local Development with Pipenv
+------------------------------
+
+If you prefer local development without Docker, you can still use pipenv.
+
 Setting up Pre-commit Hooks
-----------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 This project uses pre-commit hooks to maintain code quality. Set them up after installing dependencies:
 
@@ -53,10 +128,23 @@ Ruff performs two main functions:
 1. **Linting** - Identifies code quality issues, potential bugs, and style violations
 2. **Formatting** - Automatically formats code to maintain consistent style
 
-Running Ruff Manually
+Running Ruff (Docker)
 ~~~~~~~~~~~~~~~~~~~~~~
 
-You can run Ruff manually outside of pre-commit hooks:
+With Docker (recommended):
+
+.. code-block:: bash
+
+   # Format all Python files
+   make format
+
+   # Run linting checks
+   make lint
+
+Running Ruff (Local)
+~~~~~~~~~~~~~~~~~~~~~
+
+For local development with pipenv:
 
 .. code-block:: bash
 
@@ -122,6 +210,21 @@ Type Checking with Pyright
 
 This project uses `Pyright <https://microsoft.github.io/pyright/>`_ for static type checking. Pyright helps catch type-related bugs early and ensures code quality through static analysis.
 
+Running Pyright (Docker)
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+With Docker (recommended):
+
+.. code-block:: bash
+
+   # Run type checking
+   make typecheck
+
+Running Pyright (Local)
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+For local development with pipenv, you need to set up a configuration file first.
+
 Setting Up Pyright Configuration
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -173,10 +276,10 @@ Pyright performs static type analysis to:
 - **Code quality** - Identifies potential bugs and coding issues
 - **IDE support** - Provides better autocomplete and error detection
 
-Running Pyright Manually
-~~~~~~~~~~~~~~~~~~~~~~~~~
+Running Pyright Manually (Local)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-You can run Pyright manually to check for type issues:
+You can run Pyright manually to check for type issues when using local development:
 
 .. code-block:: bash
 
