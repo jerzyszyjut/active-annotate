@@ -1,10 +1,95 @@
 Installation and Setup
 ======================
 
-Setting up Python Environment with Pipenv
--------------------------------------------
+Docker Setup (Recommended)
+---------------------------
 
-This project uses `pipenv` for dependency management. Follow these steps to set up the development environment:
+This project uses Docker for streamlined development and deployment. This is the recommended approach for getting started quickly.
+
+Prerequisites
+~~~~~~~~~~~~~
+
+Make sure you have Docker and Docker Compose installed on your system:
+
+.. code-block:: bash
+
+   # Verify Docker installation
+   docker --version
+   docker compose --version
+
+Quick Start
+~~~~~~~~~~~
+
+1. **Clone the repository and navigate to the project directory**
+
+2. **Start the development environment:**
+
+.. code-block:: bash
+
+   # Using Make (recommended)
+   make up
+
+   # Or using Docker Compose directly
+   docker compose -f docker-compose.dev.yml up -d
+
+3. **Run database migrations:**
+
+.. code-block:: bash
+
+   # Using Make
+   make migrate
+
+   # Or using Docker Compose directly
+   docker compose -f docker-compose.dev.yml exec api-dev alembic upgrade head
+
+4. **Access the application:**
+   - API: http://localhost:8000
+   - API Documentation: http://localhost:8000/docs
+   - Interactive API Docs: http://localhost:8000/redoc
+
+Available Make Commands
+~~~~~~~~~~~~~~~~~~~~~~~
+
+The project includes a comprehensive Makefile for common development tasks:
+
+.. code-block:: bash
+
+   # Start development environment
+   make up
+
+   # Stop environment
+   make down
+
+   # View logs
+   make logs
+   make logs-api    # API service logs only
+   make logs-db     # Database logs only
+
+   # Access container shells
+   make shell       # API container
+   make shell-db    # Database container
+
+   # Run tests
+   make test        # Run tests
+   make test-cov    # Run tests with coverage
+
+   # Database operations
+   make migrate     # Run migrations
+   make migration MSG="description"  # Create new migration
+   make reset-db    # Reset database
+
+   # Code quality
+   make format      # Format code with Ruff
+   make lint        # Lint code with Ruff
+   make typecheck   # Run Pyright type checking
+
+   # Cleanup
+   make clean       # Remove all containers and images
+
+Alternative: Local Python Environment with Pipenv
+--------------------------------------------------
+
+If you prefer local development without Docker, you can still use pipenv:
 
 Prerequisites
 ~~~~~~~~~~~~~
@@ -28,8 +113,7 @@ Installing Dependencies
 .. code-block:: bash
 
    # Install dependencies from Pipfile
-   pipenv install
-
+   pipenv install --dev
 
 3. Activate the virtual environment:
 

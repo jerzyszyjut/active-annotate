@@ -15,6 +15,12 @@ pydantic = "*"
 pydantic-settings = "*"
 uvicorn = "*"
 fastapi = {extras = ["standard"], version = "*"}
+sqlmodel = "*"
+alembic = "*"
+psycopg2-binary = "*"
+asyncpg = "*"
+aiosqlite = "*"
+pytest-cov = "*"
 
 [dev-packages]
 
