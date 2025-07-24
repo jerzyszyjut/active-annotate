@@ -12,7 +12,6 @@ class ProjectBase(SQLModel):
 
 class Project(ProjectBase, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    description: Optional[str] = Field(default=None, max_length=1000)
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(UTC),
         sa_column=Column(DateTime(timezone=True), server_default=func.now()),
