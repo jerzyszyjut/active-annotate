@@ -22,9 +22,6 @@ class Project(ProjectBase, table=True):
 
 
 class ProjectCreate(ProjectBase):
-    annotation_service_id: Optional[int] = None
-
-
 class ProjectUpdate(SQLModel):
     name: Optional[str] = Field(default=None, min_length=1, max_length=200)
     active_learning_batch_size: Optional[int] = Field(default=None, ge=1, le=1000)
