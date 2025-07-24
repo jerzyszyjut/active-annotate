@@ -22,10 +22,12 @@ class Project(ProjectBase, table=True):
 
 
 class ProjectCreate(ProjectBase):
+    pass
+
+
 class ProjectUpdate(SQLModel):
     name: Optional[str] = Field(default=None, min_length=1, max_length=200)
     active_learning_batch_size: Optional[int] = Field(default=None, ge=1, le=1000)
-    description: Optional[str] = Field(default=None, max_length=1000)
 
 
 class ProjectRead(ProjectBase):
