@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/jerzyszyjut/active-annotate/workflows/CI/badge.svg)](https://github.com/jerzyszyjut/active-annotate/actions)
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/)
-[![Code Coverage](https://img.shields.io/badge/coverage-77%25-yellow.svg)](https://github.com/jerzyszyjut/active-annotate/actions)
+[![Code Coverage](https://img.shields.io/badge/coverage-95%25-green.svg)](https://github.com/jerzyszyjut/active-annotate/actions)
 [![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=flat&logo=fastapi)](https://fastapi.tiangolo.com/)
 [![Docker](https://img.shields.io/badge/docker-%230db7ed.svg?style=flat&logo=docker&logoColor=white)](https://www.docker.com/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=flat&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
