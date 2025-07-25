@@ -9,11 +9,21 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes import api_router
 from app.core.config import settings
+from app.db.database import init_db
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def life_span(app: FastAPI):
+    print(f"Server is starting ...")
+    await init_db()
+    yield
+    print(f"Server has been stopped")
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
     description=settings.DESCRIPTION,
+    lifespan=life_span,
 )
 
 if settings.BACKEND_CORS_ORIGINS:
