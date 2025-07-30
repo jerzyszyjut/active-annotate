@@ -3,26 +3,59 @@
 This module contains all the endpoints for managing projects in the Active Annotate API.
 """
 
-from typing import List
+from typing import List, Literal
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
+
 from app.db.database import get_session
 from app.models.project import Project, ProjectCreate, ProjectRead, ProjectUpdate
+from app.models.annotations.ls_annotation import LSAnnotation, LSAnnotationCreate
+from app.models.storages.local_storage import LocalStorage, LocalStorageCreate
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 
 
 @router.post("/", response_model=ProjectRead, status_code=status.HTTP_201_CREATED)
 async def create_project(
-    project: ProjectCreate, session: AsyncSession = Depends(get_session)
+    project: ProjectCreate,
+    storage_type: Literal["local-storage"],
+    storage: LocalStorageCreate,
+    annotation_type: Literal["label-studio"],
+    annotation: LSAnnotationCreate,
+    session: AsyncSession = Depends(get_session)
 ) -> ProjectRead:
     """Create a new project."""
-    db_project = Project.model_validate(project)
-
+    db_project = Project.model_validate(
+        project,
+        update={
+            "annotation_type": annotation_type,
+            "storage_type": storage_type
+        }
+    )
     session.add(db_project)
+    await session.flush()
+
+    db_storage = LocalStorage.model_validate(
+        storage,
+        update={
+            "project_id": db_project.id
+        }
+    )
+    session.add(db_storage)
+
+    db_annotation = LSAnnotation.model_validate(
+        annotation,
+        update={
+            "project_id": db_project.id
+        }
+    )
+    session.add(db_annotation)
+
     await session.commit()
     await session.refresh(db_project)
+    await session.refresh(db_storage)
+    await session.refresh(db_annotation)
 
     return ProjectRead.model_validate(db_project)
 
@@ -99,3 +132,4 @@ async def delete_project(
 
     await session.delete(project)
     await session.commit()
+
