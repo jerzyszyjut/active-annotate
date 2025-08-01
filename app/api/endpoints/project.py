@@ -3,59 +3,67 @@
 This module contains all the endpoints for managing projects in the Active Annotate API.
 """
 
-from typing import List, Literal
-from fastapi import APIRouter, Depends, HTTPException, status
+from typing import List
+from fastapi import APIRouter, Depends, HTTPException, status, FastAPI
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
+from app.utils import unwrap_annotated
 from app.db.database import get_session
 from app.models.project import Project, ProjectCreate, ProjectRead, ProjectUpdate
-from app.models.annotations.ls_annotation import LSAnnotation, LSAnnotationCreate
-from app.models.storages.local_storage import LocalStorage, LocalStorageCreate
+from app.models.annotations.annotation import Annotation
+from app.models.storages.storage import Storage
+from app.models.mapping import ANNOTATION_MAP, STORAGE_MAP
+
+from app.schemas.annotations.annotation import AnnotationCreateUnion
+from app.schemas.storages.storage import StorageCreateUnion
+
 
 router = APIRouter(prefix="/projects", tags=["projects"])
-
 
 @router.post("/", response_model=ProjectRead, status_code=status.HTTP_201_CREATED)
 async def create_project(
     project: ProjectCreate,
-    storage_type: Literal["local-storage"],
-    storage: LocalStorageCreate,
-    annotation_type: Literal["label-studio"],
-    annotation: LSAnnotationCreate,
+    storage: StorageCreateUnion,
+    annotation: AnnotationCreateUnion,
     session: AsyncSession = Depends(get_session)
 ) -> ProjectRead:
     """Create a new project."""
-    db_project = Project.model_validate(
-        project,
-        update={
-            "annotation_type": annotation_type,
-            "storage_type": storage_type
-        }
-    )
-    session.add(db_project)
+
+    db_storage_base = Storage(storage_type=storage.storage_type)
+    session.add(db_storage_base)
     await session.flush()
 
-    db_storage = LocalStorage.model_validate(
-        storage,
-        update={
-            "project_id": db_project.id
-        }
-    )
-    session.add(db_storage)
+    storage_child = unwrap_annotated(storage).model_validate(storage)
+    db_storage_child = STORAGE_MAP[storage.storage_type](
+        **storage_child.model_dump(),
+        id=db_storage_base.id    
+    ) 
+    session.add(db_storage_child)
+    await session.flush()
 
-    db_annotation = LSAnnotation.model_validate(
-        annotation,
-        update={
-            "project_id": db_project.id
-        }
-    )
-    session.add(db_annotation)
+    db_annotation_base = Annotation(annotation_type=annotation.annotation_type)
+    session.add(db_annotation_base)
+    await session.flush()
 
+    annotation_child = unwrap_annotated(annotation).model_validate(annotation)
+    db_annotation_child = ANNOTATION_MAP[annotation.annotation_type](
+        **annotation_child.model_dump(),
+        id=db_annotation_base.id
+    )
+    session.add(db_annotation_child)
+    await session.flush()
+
+    db_project = Project.model_validate({
+        **project.model_dump(),
+        "annotation_type": annotation.annotation_type,
+        "storage_type": storage.storage_type,
+        "annotation_id": db_annotation_base.id,
+        "storage_id": db_storage_base.id
+    })
+    session.add(db_project)
     await session.commit()
     await session.refresh(db_project)
-    await session.refresh(db_storage)
-    await session.refresh(db_annotation)
 
     return ProjectRead.model_validate(db_project)
 
