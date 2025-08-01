@@ -2,6 +2,10 @@ from datetime import datetime, UTC
 from typing import Literal, Optional
 from sqlmodel import SQLModel, Field
 from sqlalchemy import Column, DateTime, func
+from sqlalchemy.types import Enum as SQLEnum
+
+from app.models.annotations.annotation import AnnotationType
+from app.models.storages.storage import StorageType
 
 
 class ProjectBase(SQLModel):
@@ -19,8 +23,11 @@ class Project(ProjectBase, table=True):
     updated_at: Optional[datetime] = Field(
         default=None, sa_column=Column(DateTime(timezone=True), onupdate=func.now())
     )
-    annotation_type: Literal["label-studio"]
-    storage_type: Literal["local-storage"]
+    annotation_type: AnnotationType = Field(sa_column=Column(SQLEnum(AnnotationType)))
+    storage_type: StorageType = Field(sa_column=Column(SQLEnum(StorageType)))
+
+    annotation_id: Optional[int] = Field(default=None, foreign_key="annotation.id")
+    storage_id: Optional[int] = Field(default=None, foreign_key="storage.id")
 
 
 class ProjectCreate(ProjectBase):
@@ -31,8 +38,8 @@ class ProjectUpdate(SQLModel):
     name: Optional[str] = Field(default=None, min_length=1, max_length=200)
     active_learning_batch_size: Optional[int] = Field(default=None, ge=1, le=1000)
     description: Optional[str] = Field(default=None, max_length=1000)
-    annotation_type: Literal["label-studio"]
-    storage_type: Literal["local-storage"]
+    annotation_type: Optional[Literal["label-studio"]]
+    storage_type: Optional[Literal["local-storage"]]
 
 
 class ProjectRead(ProjectBase):
