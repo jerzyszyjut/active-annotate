@@ -21,6 +21,7 @@ psycopg2-binary = "*"
 asyncpg = "*"
 aiosqlite = "*"
 pytest-cov = "*"
+label-studio-sdk = "*"
 
 [dev-packages]
 

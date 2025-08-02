@@ -1,0 +1,46 @@
+from fastapi import HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel import select
+
+from app.models.annotation_tool_client import AnnotationToolClient
+from app.schemas.annotation_tool_client import (
+    AnnotationToolClientCreate,
+    AnnotationToolClientRead,
+    AnnotationToolClientUpdate
+)
+
+
+class AnnotationToolClientCRUD:
+    async def create_annotation_tool(
+            self,
+            annotation_tool_client: AnnotationToolClientCreate,
+            session: AsyncSession
+        ) -> AnnotationToolClientRead:
+        db_annotation_tool_client = AnnotationToolClient.model_validate(annotation_tool_client)
+
+        session.add(db_annotation_tool_client)
+
+        await session.commit()
+        await session.refresh(db_annotation_tool_client)
+
+        return AnnotationToolClientRead.model_validate(db_annotation_tool_client)
+
+    async def get_annotation_tool_clients(self, skip: int, limit: int, session: AsyncSession) -> list[AnnotationToolClientRead]:
+        statement = select(AnnotationToolClientCRUD).offset(skip).limit(limit)
+        results = await session.execute(statement)
+        annotation_tool_clients = results.scalars().all()
+
+        return [AnnotationToolClientRead.model_validate(annotation_tool_client) for annotation_tool_client in annotation_tool_clients]
+
+    async def get_annotation_tool_client_by_id(self, annotation_tool_client_id: int, session: AsyncSession) -> AnnotationToolClientRead:
+        statement = select(AnnotationToolClient).where(AnnotationToolClient.id == annotation_tool_client_id)
+        result = await session.execute(statement)
+        annotation_tool_clients = result.scalars().first()
+
+        if not annotation_tool_clients:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Annotation tool client not found"
+            )
+
+        return AnnotationToolClientRead.model_validate(annotation_tool_clients)
+

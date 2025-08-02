@@ -1,19 +1,18 @@
-from dotenv import load_dotenv
-import os
 import random
 
-from storage_service import storage_factory
-from annotation_service import annotation_service_factory
+from .annotation_tool_client import AnnotationToolClientService
+from .storage import StorageService
+
 
 class ProjectService:
     def __init__(
             self,
-            storage_config: dict,
-            annotation_service_config: dict,
+            storage: StorageService,
+            annotation_service_config: AnnotationToolClientService,
             al_batch: int = 2,
         ):
-        self.storage = storage_factory(storage_config)
-        self.annotation_service = annotation_service_factory(annotation_service_config)
+        self.storage = storage
+        self.annotation_service = annotation_service_config
         self.al_batch = al_batch
         self.epoch = 0
 
@@ -39,15 +38,3 @@ class ProjectService:
             """,
             image_paths=selected_paths
         )
-
-if __name__ == "__main__":
-    load_dotenv()
-
-    ProjectService(
-        storage_config={"images_path": "images"},
-        annotation_service_config={
-            "url": "http://localhost:8080/",
-            "project_id": "1", # unnecessary
-            "api_key": os.getenv("API_KEY"),
-        }
-    ).start_active_learning()
