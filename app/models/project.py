@@ -20,7 +20,9 @@ class Project(SQLModel, table=True):
     )
     name: str = Field(index=True, min_length=1, max_length=200)
     active_learning_batch_size: int = Field(default=10, ge=1, le=1000)
+    label_config: str = Field(max_length=1000)
     description: Optional[str] = Field(default=None, max_length=1000)
+    epoch: int = Field(default=0)
     
     annotation_tool_client_id: Optional[int] = Field(default=None, foreign_key="annotationtoolclient.id")
     storage_id: Optional[int] = Field(default=None, foreign_key="storage.id")

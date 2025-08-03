@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 
 class AnnotationToolClient(SQLModel, table=True):
     __table_args__ = (
-        UniqueConstraint("url", "ls_project_id"),
+        UniqueConstraint("ip_address", "ls_project_id"),
     )
 
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -21,8 +21,9 @@ class AnnotationToolClient(SQLModel, table=True):
     updated_at: Optional[datetime] = Field(
         default=None, sa_column=Column(DateTime(timezone=True), onupdate=func.now())
     )
-    url: str = Field(max_length=200)
-    ls_project_id: int = Field()
+    ip_address: str = Field(max_length=200)
+    port: int = Field()
+    ls_project_id: Optional[int] = Field(default=None)
     api_key: str = Field(max_length=1000) # unencrypted for now
 
     # project: Optional[Project] = Relationship(back_populates="annotation_tool_client")

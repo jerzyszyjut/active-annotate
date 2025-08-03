@@ -8,7 +8,7 @@ class StorageCreate(BaseModel):
 
 
 class StorageUpdate(BaseModel):
-    path: Optional[str]
+    path: Optional[str] = None
 
 
 class StorageRead(BaseModel):

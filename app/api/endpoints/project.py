@@ -56,24 +56,8 @@ async def update_project(
     session: AsyncSession = Depends(get_session),
 ) -> ProjectRead:
     """Update a project."""
-    statement = select(Project).where(Project.id == project_id)
-    result = await session.execute(statement)
-    db_project = result.scalars().first()
 
-    if not db_project:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Project not found"
-        )
-
-    project_data = project_update.model_dump(exclude_unset=True)
-    for field, value in project_data.items():
-        setattr(db_project, field, value)
-
-    session.add(db_project)
-    await session.commit()
-    await session.refresh(db_project)
-
-    return ProjectRead.model_validate(db_project)
+    return await project_crud.update_project(project_id, project_update, session)
 
 
 @router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)

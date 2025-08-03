@@ -30,3 +30,30 @@ async def create_storage(
     """Create a new storage."""
 
     return await storage_crud.create(storage, session)
+
+@router.get("/", response_model=List[StorageRead])
+async def get_storages(
+    skip: int = 0, limit: int = 100, session: AsyncSession = Depends(get_session)
+) -> List[StorageRead]:
+    """Get all projects."""
+    
+    return await storage_crud.get_storages(skip, limit, session)
+
+@router.get("/{project_id}", response_model=StorageRead)
+async def get_project(
+    storage_id: int, session: AsyncSession = Depends(get_session)
+) -> StorageRead:
+    """Get a project by ID."""
+    
+    return await storage_crud.get_storage_by_id(storage_id, session)
+
+
+@router.put("/{project_id}", response_model=StorageRead)
+async def update_project(
+    storage_id: int,
+    storage_update: StorageUpdate,
+    session: AsyncSession = Depends(get_session),
+) -> StorageRead:
+    """Update a project."""
+
+    return await storage_crud.update_storage(storage_id, storage_update, session)

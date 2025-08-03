@@ -9,14 +9,23 @@ class ProjectService:
             self,
             storage: StorageService,
             annotation_service_config: AnnotationToolClientService,
-            al_batch: int = 2,
+            name: str,
+            al_batch: int,
+            label_config: str,
+            epoch: int = 0
         ):
         self.storage = storage
         self.annotation_service = annotation_service_config
+        self.name = name
         self.al_batch = al_batch
-        self.epoch = 0
+        self.label_config = label_config
+        self.epoch = epoch
 
     def start_active_learning(self):
+        self.select_batch()
+        self.epoch += 1
+
+    def start_next_epoch(self):
         self.select_batch()
         self.epoch += 1
         
@@ -26,15 +35,7 @@ class ProjectService:
         selected_paths = random.sample(image_paths, k=self.al_batch)
 
         self.annotation_service.add_tasks(
-            title="test",
-            label_config="""
-                <View>
-                    <Image name="image" value="$image"/>
-                    <RectangleLabels name="label" toName="image">
-                        <Label value="Airplane" background="green"/>
-                        <Label value="Car" background="blue"/>
-                    </RectangleLabels>
-                </View>
-            """,
+            title=f"{self.name}_{self.epoch}",
+            label_config=self.label_config,
             image_paths=selected_paths
         )

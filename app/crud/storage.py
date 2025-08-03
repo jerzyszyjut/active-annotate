@@ -40,4 +40,27 @@ class StorageCRUD:
 
         return StorageRead.model_validate(storage)
 
+    async def update_storage(
+        self,
+        storage_id: int,
+        storage_update: StorageUpdate,
+        session: AsyncSession
+    ) -> StorageRead:
+        statement = select(Storage).where(Storage.id == storage_id)
+        result = await session.execute(statement)
+        db_storage = result.scalars().first()
 
+        if not db_storage:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Project not found"
+            )
+
+        project_data = storage_update.model_dump(exclude_unset=True)
+        for field, value in project_data.items():
+            setattr(db_storage, field, value)
+
+        session.add(db_storage)
+        await session.commit()
+        await session.refresh(db_storage)
+
+        return StorageRead.model_validate(db_storage)

@@ -3,12 +3,13 @@ from pathlib import Path
 
 
 class AnnotationToolClientService:
-    def __init__(self, url, project_id, api_key):
-        self.url = url
+    def __init__(self, ip_address, port, project_id, api_key):
+        self.ip_address = ip_address
+        self.port = port
         self.project_id = project_id
         self.api_key = api_key
         self.ls = LabelStudio(
-            base_url=url,
+            base_url=f"http://{self.ip_address}:{self.port}",
             api_key=api_key
         )
 
@@ -29,6 +30,7 @@ class AnnotationToolClientService:
                 id=new_project.id,
                 request=[{"image": image_path} for image_path in image_paths]
             )
+            self.project_id = new_project.id
         else:
             raise Exception() 
     

@@ -4,22 +4,25 @@ from typing import Optional
 
 
 class AnnotationToolClientCreate(BaseModel):
-    url: str
-    ls_project_id: int
+    ip_address: str
+    port: int
+    ls_project_id: Optional[int] = None
     api_key: str
 
 
 class AnnotationToolClientUpdate(BaseModel):
-    url: Optional[str]
-    ls_project_id: Optional[int]
-    api_key: Optional[str]
+    ip_address: Optional[str] = None
+    port: Optional[int] = None
+    ls_project_id: Optional[int] = None
+    api_key: Optional[str] = None
 
 
 class AnnotationToolClientRead(BaseModel):
     id: int
     created_at: datetime
     updated_at: Optional[datetime] = None
-    url: str
+    ip_address: str
+    port: int
     ls_project_id: int
     api_key: str
 
