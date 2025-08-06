@@ -1,12 +1,8 @@
 from __future__ import annotations
 from datetime import datetime, UTC
-from typing import Optional, TYPE_CHECKING
-from sqlmodel import SQLModel, Field, Relationship
+from typing import Optional
+from sqlmodel import SQLModel, Field
 from sqlalchemy import Column, DateTime, func
-
-if TYPE_CHECKING:
-    from .annotation_tool_client import AnnotationToolClient
-    from .storage import Storage
 
 
 class Project(SQLModel, table=True):
@@ -26,6 +22,3 @@ class Project(SQLModel, table=True):
     
     annotation_tool_client_id: Optional[int] = Field(default=None, foreign_key="annotationtoolclient.id")
     storage_id: Optional[int] = Field(default=None, foreign_key="storage.id")
-
-    # annotation_tool_client: Optional[AnnotationToolClient] = Relationship(back_populates="project")
-    # storage: Optional[Storage] = Relationship(back_populates="project")

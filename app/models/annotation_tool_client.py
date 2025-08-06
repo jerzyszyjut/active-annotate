@@ -1,11 +1,8 @@
 from __future__ import annotations
 from datetime import datetime, UTC
-from typing import TYPE_CHECKING, Optional
-from sqlmodel import SQLModel, Field, Relationship, UniqueConstraint
+from typing import Optional
+from sqlmodel import SQLModel, Field, UniqueConstraint
 from sqlalchemy import Column, DateTime, func
-
-if TYPE_CHECKING:
-    from .project import Project
 
 
 class AnnotationToolClient(SQLModel, table=True):
@@ -25,5 +22,3 @@ class AnnotationToolClient(SQLModel, table=True):
     port: int = Field()
     ls_project_id: Optional[int] = Field(default=None)
     api_key: str = Field(max_length=1000) # unencrypted for now
-
-    # project: Optional[Project] = Relationship(back_populates="annotation_tool_client")

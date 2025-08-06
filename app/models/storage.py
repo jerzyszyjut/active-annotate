@@ -1,11 +1,8 @@
 from __future__ import annotations
 from datetime import datetime, UTC
-from typing import Optional, TYPE_CHECKING
-from sqlmodel import SQLModel, Field, Relationship
+from typing import Optional
+from sqlmodel import SQLModel, Field
 from sqlalchemy import Column, DateTime, func
-
-if TYPE_CHECKING:
-    from .project import Project
 
 
 class Storage(SQLModel, table=True):
@@ -18,5 +15,3 @@ class Storage(SQLModel, table=True):
         default=None, sa_column=Column(DateTime(timezone=True), onupdate=func.now())
     )
     path: str = Field(max_length=1000)
-
-    # project: Optional[Project] = Relationship(back_populates="storage")

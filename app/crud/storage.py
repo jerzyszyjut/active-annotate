@@ -52,7 +52,7 @@ class StorageCRUD:
 
         if not db_storage:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Project not found"
+                status_code=status.HTTP_404_NOT_FOUND, detail="Storage not found"
             )
 
         project_data = storage_update.model_dump(exclude_unset=True)
