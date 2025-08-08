@@ -13,12 +13,14 @@ TEST_PROJECT_DATA = {
     "name": "Test Project",
     "description": "A test project description",
     "active_learning_batch_size": 25,
+    "label_config": "<View><Text name='text' value='$text'/><Choices name='label' toName='text'><Choice value='Positive'/><Choice value='Negative'/></Choices></View>",
 }
 
 TEST_PROJECT_UPDATE_DATA = {
     "name": "Updated Test Project",
     "description": "Updated description",
     "active_learning_batch_size": 30,
+    "label_config": "<View><Text name='text' value='$text'/><Choices name='label' toName='text'><Choice value='Updated'/><Choice value='Test'/></Choices></View>",
 }
 
 
@@ -96,6 +98,7 @@ class TestProjectEndpoints:
                 name=f"Project {i}",
                 description=f"Description {i}",
                 active_learning_batch_size=10,
+                label_config="<View><Text name='text' value='$text'/><Choices name='label' toName='text'><Choice value='Positive'/><Choice value='Negative'/></Choices></View>",
             )
             test_session.add(project)
         await test_session.commit()
@@ -311,6 +314,7 @@ class TestProjectEndpoints:
                 name=name,
                 description=f"Description for {name}",
                 active_learning_batch_size=10,
+                label_config="<View><Text name='text' value='$text'/><Choices name='label' toName='text'><Choice value='Positive'/><Choice value='Negative'/></Choices></View>",
             )
             test_session.add(project)
         await test_session.commit()

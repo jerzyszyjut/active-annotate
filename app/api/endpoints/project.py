@@ -12,20 +12,16 @@ from app.crud.project import ProjectCRUD
 from app.db.database import get_session
 from app.models.project import Project
 
-from app.schemas.project import (
-    ProjectCreate,
-    ProjectRead,
-    ProjectUpdate
-)
+from app.schemas.project import ProjectCreate, ProjectRead, ProjectUpdate
 
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 project_crud = ProjectCRUD()
 
+
 @router.post("/", response_model=ProjectRead, status_code=status.HTTP_201_CREATED)
 async def create_project(
-    project: ProjectCreate,
-    session: AsyncSession = Depends(get_session)
+    project: ProjectCreate, session: AsyncSession = Depends(get_session)
 ) -> ProjectRead:
     """Create a new project."""
 
@@ -37,15 +33,16 @@ async def get_projects(
     skip: int = 0, limit: int = 100, session: AsyncSession = Depends(get_session)
 ) -> List[ProjectRead]:
     """Get all projects."""
-    
+
     return await project_crud.get_projects(skip, limit, session)
+
 
 @router.get("/{project_id}", response_model=ProjectRead)
 async def get_project(
     project_id: int, session: AsyncSession = Depends(get_session)
 ) -> ProjectRead:
     """Get a project by ID."""
-    
+
     return await project_crud.get_project_by_id(project_id, session)
 
 
@@ -76,4 +73,3 @@ async def delete_project(
 
     await session.delete(project)
     await session.commit()
-

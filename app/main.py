@@ -12,12 +12,14 @@ from app.core.config import settings
 from app.db.database import init_db
 from contextlib import asynccontextmanager
 
+
 @asynccontextmanager
 async def life_span(app: FastAPI):
-    print(f"Server is starting ...")
+    print("Server is starting ...")
     await init_db()
     yield
-    print(f"Server has been stopped")
+    print("Server has been stopped")
+
 
 app = FastAPI(
     title=settings.PROJECT_NAME,

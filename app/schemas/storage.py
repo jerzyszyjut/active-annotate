@@ -17,6 +17,4 @@ class StorageRead(BaseModel):
     updated_at: Optional[datetime] = None
     path: str
 
-    model_config = {
-        "from_attributes": True
-    }
+    model_config = {"from_attributes": True}

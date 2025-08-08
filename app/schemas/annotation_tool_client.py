@@ -26,6 +26,4 @@ class AnnotationToolClientRead(BaseModel):
     ls_project_id: int
     api_key: str
 
-    model_config = {
-        "from_attributes": True
-    }
+    model_config = {"from_attributes": True}

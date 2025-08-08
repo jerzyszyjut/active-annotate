@@ -6,14 +6,14 @@ from .storage import StorageService
 
 class ProjectService:
     def __init__(
-            self,
-            storage: StorageService,
-            annotation_service_config: AnnotationToolClientService,
-            name: str,
-            al_batch: int,
-            label_config: str,
-            epoch: int = 0
-        ):
+        self,
+        storage: StorageService,
+        annotation_service_config: AnnotationToolClientService,
+        name: str,
+        al_batch: int,
+        label_config: str,
+        epoch: int = 0,
+    ):
         self.storage = storage
         self.annotation_service = annotation_service_config
         self.name = name
@@ -28,9 +28,8 @@ class ProjectService:
     def start_next_epoch(self):
         self.select_batch()
         self.epoch += 1
-        
+
     def select_batch(self):
-    
         image_paths = self.storage.get_image_paths()
         if len(image_paths) >= self.al_batch:
             selected_paths = random.sample(image_paths, k=self.al_batch)
@@ -40,5 +39,5 @@ class ProjectService:
         self.annotation_service.add_tasks(
             title=f"{self.name}_{self.epoch}",
             label_config=self.label_config,
-            image_paths=selected_paths
+            image_paths=selected_paths,
         )
