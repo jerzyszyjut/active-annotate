@@ -32,7 +32,10 @@ class ProjectService:
     def select_batch(self):
     
         image_paths = self.storage.get_image_paths()
-        selected_paths = random.sample(image_paths, k=self.al_batch)
+        if len(image_paths) >= self.al_batch:
+            selected_paths = random.sample(image_paths, k=self.al_batch)
+        else:
+            selected_paths = image_paths
 
         self.annotation_service.add_tasks(
             title=f"{self.name}_{self.epoch}",

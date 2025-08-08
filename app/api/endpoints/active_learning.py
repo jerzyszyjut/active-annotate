@@ -27,7 +27,10 @@ async def start_active_learning(
     db_project = await project_crud.get_project_by_id(project_id, session)
     
     if not db_project.annotation_tool_client_id or not db_project.storage_id:
-        raise Exception() # fix
+        raise HTTPException(
+            status_code=400,
+            detail="Project missing annotation tool client or storage configuration"
+        )
     
     annotation_tool_client_crud = AnnotationToolClientCRUD()
     db_annotation_tool_client = await annotation_tool_client_crud.get_annotation_tool_client_by_id(db_project.annotation_tool_client_id, session)
@@ -80,7 +83,7 @@ async def check_tasks(
     
     if project_data.get("total_annotations_number") == db_project.active_learning_batch_size:
         if not db_project.annotation_tool_client_id or not db_project.storage_id:
-            raise Exception() # fix
+            raise HTTPException(status_code=400, detail="Project missing annotation tool client or storage configuration")
         
 
         storage_crud = StorageCRUD()

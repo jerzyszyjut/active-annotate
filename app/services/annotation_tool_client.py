@@ -32,5 +32,5 @@ class AnnotationToolClientService:
             )
             self.project_id = new_project.id
         else:
-            raise Exception() 
+            raise Exception("Failed to create Label Studio project") 
     
