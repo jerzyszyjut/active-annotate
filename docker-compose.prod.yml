@@ -19,6 +19,27 @@ services:
       - active-annotate-prod-network
     restart: unless-stopped
 
+  ml-backend:
+    build:
+      context: ml_backend/example
+    container_name: ml-backend-container
+    ports:
+      - "9000:9000"
+    volumes:
+      - ml-backend-weights:/app/model_weights
+    networks:
+      - active-annotate-prod-network
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PORT=9000
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
   api:
     build:
       context: .
@@ -42,6 +63,7 @@ services:
 
 volumes:
   postgres_prod_data:
+  ml-backend-weights:
 
 networks:
   active-annotate-prod-network:

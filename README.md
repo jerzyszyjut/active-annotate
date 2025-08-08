@@ -11,7 +11,18 @@
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat)](http://makeapullrequest.com)
 [![Documentation](https://img.shields.io/badge/docs-github--pages-blue)](https://jerzyszyjut.github.io/active-annotate/)
 
-A backend API for managing active learning annotation projects, built with FastAPI and modern Python development practices.
+A backend API for managing active learning annotation projects with ML Backend integration for Label Studio, built with FastAPI and modern Python development practices.
+
+## ✨ Features
+
+- **RESTful API** for project management
+- **ML Backend Integration** for Label Studio
+- **Active Learning Support** with custom ML models
+- **PostgreSQL Database** with async support
+- **Docker containerization** for easy deployment
+- **Comprehensive testing** with pytest
+- **API documentation** with OpenAPI/Swagger
+- **Modern Python** with type hints and async/await
 
 ## 📖 Documentation
 
@@ -54,7 +65,34 @@ The API will be available at:
 
 - **API**: `http://localhost:8000`
 - **API Docs**: `http://localhost:8000/docs`
+- **ML Backend API**: `http://localhost:8000/ml`
 - **pgAdmin**: `http://localhost:5050` (admin@example.com / admin)
+
+## 🤖 ML Backend Integration
+
+Active Annotate includes built-in ML Backend API endpoints for seamless integration with Label Studio:
+
+### Available Endpoints
+
+- **POST** `/ml/predict` - Get predictions for tasks
+- **POST** `/ml/setup` - Initialize ML model for a project
+- **POST** `/ml/webhook` - Handle training events
+- **GET** `/ml/health` - Health check
+- **GET** `/ml/metrics` - Model metrics
+
+### Quick ML Backend Setup
+
+1. Configure your custom ML backend URL:
+
+   ```bash
+   export ML_BACKEND_URL=http://localhost:8001
+   ```
+
+2. Start your custom ML backend on port 8001
+
+3. Configure Label Studio to use `http://localhost:8000/ml` as the ML backend
+
+For detailed ML Backend integration documentation, see [docs/ml-backend-integration.md](docs/ml-backend-integration.md).
 
 ### Local Development (Alternative)
 
@@ -98,8 +136,14 @@ The API will be available at `http://localhost:8000`
 ### Docker (Recommended)
 
 ```bash
-# Run all tests
+# Run all tests including ML backend tests
 make test
+
+# Run specific ML backend tests
+pipenv run pytest tests/test_ml_backend.py
+
+# Test ML backend integration
+python examples/test_ml_backend.py
 
 # Run tests with coverage report
 make test-cov

@@ -34,6 +34,12 @@ class Settings(BaseSettings):
     POSTGRES_DB: str = "active_annotate"
     POSTGRES_PORT: int = 5432
 
+    ML_BACKEND_URL: str = "http://localhost:9000"
+
+    # Label Studio Configuration
+    LABEL_STUDIO_URL: str = "http://localhost:8080"
+    LABEL_STUDIO_TOKEN: Optional[str] = None
+
     @property
     def DATABASE_URL(self) -> str:
         return f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"

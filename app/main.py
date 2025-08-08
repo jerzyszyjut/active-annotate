@@ -5,10 +5,19 @@ The application is configured with CORS middleware and includes health check
 and welcome endpoints.
 """
 
+import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes import api_router
 from app.core.config import settings
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+
+logger = logging.getLogger(__name__)
+logger.info("Starting Active Annotate API...")
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -26,6 +35,7 @@ if settings.BACKEND_CORS_ORIGINS:
     )
 
 app.include_router(api_router)
+logger.info("API routes configured")
 
 
 @app.get("/")

@@ -20,6 +20,38 @@ services:
     networks:
       - active-annotate-dev-network
 
+  ml-backend:
+    build:
+      context: ml_backend/example
+    container_name: ml-backend-container
+    ports:
+      - "9000:9000"
+    volumes:
+      - ml-backend-weights:/app/model_weights
+    networks:
+      - active-annotate-dev-network
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PORT=9000
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  label-studio:
+    image: "heartexlabs/label-studio:latest"
+    ports:
+      - "8080:8080"
+    volumes:
+      - "label-studio-data:/label-studio/data"
+    networks:
+      - active-annotate-dev-network
+    environment:
+      - LABEL_STUDIO_ENABLE_LEGACY_API_TOKEN=true
+
   api-dev:
     build:
       context: .
@@ -32,6 +64,15 @@ services:
       - POSTGRES_PASSWORD=password
       - POSTGRES_DB=active_annotate
       - POSTGRES_PORT=5432
+      - ML_BACKEND_URL=http://ml-backend:9000
+      - LABEL_STUDIO_URL=http://label-studio:8080
+      - LABEL_STUDIO_TOKEN=${LABEL_STUDIO_TOKEN}
+      - PROJECT_NAME=${PROJECT_NAME}
+      - VERSION=${VERSION}
+      - DESCRIPTION=${DESCRIPTION}
+      - BACKEND_CORS_ORIGINS=${BACKEND_CORS_ORIGINS}
+    env_file:
+      - .env
     volumes:
       - .:/app
       - /app/__pycache__
@@ -65,6 +106,8 @@ services:
 volumes:
   postgres_dev_data:
   pgadmin_dev_data:
+  label-studio-data:
+  ml-backend-weights:
 
 networks:
   active-annotate-dev-network:
