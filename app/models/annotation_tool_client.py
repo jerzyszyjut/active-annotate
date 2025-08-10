@@ -19,4 +19,4 @@ class AnnotationToolClient(SQLModel, table=True):
     ip_address: str = Field(max_length=200)
     port: int = Field()
     ls_project_id: Optional[int] = Field(default=None)
-    api_key: str = Field(max_length=1000)  # unencrypted for now
+    api_key: str = Field(max_length=1000)

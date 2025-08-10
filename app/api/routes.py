@@ -5,10 +5,10 @@ Additional route modules should be included here as the API grows.
 """
 
 from fastapi import APIRouter
-from .endpoints.project import router as project_router
-from .endpoints.storage import router as storage_router
-from .endpoints.annotation_tool_client import router as atc_router
-from .endpoints.active_learning import router as al_router
+from app.api.endpoints.project import router as project_router
+from app.api.endpoints.storage import router as storage_router
+from app.api.endpoints.annotation_tool_client import router as atc_router
+from app.api.endpoints.active_learning import router as al_router
 
 api_router = APIRouter()
 

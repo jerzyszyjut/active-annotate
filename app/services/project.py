@@ -1,7 +1,7 @@
 import random
 
-from .annotation_tool_client import AnnotationToolClientService
-from .storage import StorageService
+from app.services.annotation_tool_client import AnnotationToolClientService
+from app.services.storage import StorageService
 
 
 class ProjectService:

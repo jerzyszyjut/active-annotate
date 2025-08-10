@@ -36,7 +36,7 @@ async def get_storages(
 
 
 @router.get("/{project_id}", response_model=StorageRead)
-async def get_project(
+async def get_storage(
     storage_id: int, session: AsyncSession = Depends(get_session)
 ) -> StorageRead:
     """Get a storage by ID."""
@@ -45,7 +45,7 @@ async def get_project(
 
 
 @router.put("/{project_id}", response_model=StorageRead)
-async def update_project(
+async def update_storage(
     storage_id: int,
     storage_update: StorageUpdate,
     session: AsyncSession = Depends(get_session),
