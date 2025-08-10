@@ -6,7 +6,7 @@ class StorageService:
         self.path = path
 
     def get_image_paths(self) -> list[str]:
-        image_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.webp'}
+        image_extensions = {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".webp"}
         return [
             f"/data/local-files/?d={image_path}"
             for image_path in Path(self.path).iterdir()

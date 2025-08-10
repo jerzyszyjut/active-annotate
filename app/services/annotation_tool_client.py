@@ -1,5 +1,6 @@
 from label_studio_sdk import LabelStudio
 from pathlib import Path
+from typing import Sequence
 
 
 class AnnotationToolClientService:
@@ -12,7 +13,9 @@ class AnnotationToolClientService:
             base_url=f"http://{self.ip_address}:{self.port}", api_key=api_key
         )
 
-    def add_tasks(self, title: str, label_config: str, image_paths: list[Path | str]):
+    def add_tasks(
+        self, title: str, label_config: str, image_paths: Sequence[Path | str]
+    ):
         new_project = self.ls.projects.create(title=title, label_config=label_config)
 
         if new_project.id is not None:
