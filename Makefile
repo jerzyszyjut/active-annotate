@@ -14,6 +14,8 @@ help:
 	@echo "  logs-db    - Show logs from database service"
 	@echo "  shell      - Open shell in API container"
 	@echo "  shell-db   - Open shell in database container"
+	@echo "  shell-ml   - Open shell in ml backend container"
+	@echo "  shell-ls   - Open shell in label studio container"
 	@echo "  test       - Run tests in container"
 	@echo "  test-cov   - Run tests with coverage report"
 	@echo "  migrate    - Run database migrations"
@@ -55,6 +57,12 @@ logs-api:
 logs-db:
 	docker compose -f docker-compose.dev.yml logs -f postgres
 
+logs-ml:
+	docker compose -f docker-compose.dev.yml logs -f ml-backend
+
+logs-ls:
+	docker compose -f docker-compose.dev.yml logs -f label-studio
+
 # Open shell in API container
 shell:
 	docker compose -f docker-compose.dev.yml exec api-dev /bin/bash
@@ -62,6 +70,12 @@ shell:
 # Open shell in database container
 shell-db:
 	docker compose -f docker-compose.dev.yml exec postgres psql -U postgres -d active_annotate
+
+shell-ml:
+	docker compose -f docker-compose.dev.yml exec ml-backend /bin/bash
+
+shell-ls:
+	docker compose -f docker-compose.dev.yml exec label-studio /bin/bash
 
 # Run tests
 test:

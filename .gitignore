@@ -2,9 +2,14 @@ docs/_build
 .env
 __pycache__/
 pyrightconfig.json
+.vscode/
 
 # Coverage reports
 htmlcov/
 coverage.xml
 .coverage
 coverage.svg
+
+# Temporary
+images/
+data/

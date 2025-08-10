@@ -1,0 +1,85 @@
+# Git
+
+.git
+.gitignore
+
+# Python
+
+**pycache**
+_.pyc
+_.pyo
+_.pyd
+.Python
+env
+pip-log.txt
+pip-delete-this-directory.txt
+.tox
+.coverage
+.coverage._
+.cache
+nosetests.xml
+coverage.xml
+_.cover
+_.log
+.pytest_cache
+
+# Virtual environments
+
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE
+
+.vscode/
+.idea/
+_.swp
+_.swo
+\*~
+
+# OS
+
+.DS*Store
+.DS_Store?
+.*\*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Documentation
+
+\*.md
+!README.md
+
+# Model weights (will be handled by volume)
+
+model_weights/
+\*.pth
+
+# Temporary files
+
+tmp/
+temp/
+\*.tmp
+
+# Logs
+
+\*.log
+logs/
+
+# Build artifacts
+
+dist/
+build/
+\*.egg-info/
+
+# Docker
+
+Dockerfile
+docker-compose.yml
+.dockerignore

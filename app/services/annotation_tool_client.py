@@ -1,0 +1,148 @@
+from label_studio_sdk import Client, LabelStudio
+from pathlib import Path
+from typing import Sequence, Optional, Dict, Any
+import logging
+import base64
+import mimetypes
+
+logger = logging.getLogger(__name__)
+
+
+class AnnotationToolClientService:
+    def __init__(
+        self,
+        ip_address: str,
+        port: int,
+        api_key: str,
+        ml_url: str,
+        project_id: Optional[int] = None,
+    ):
+        self.ip_address = ip_address
+        self.port = port
+        self.project_id = project_id
+        self.api_key = api_key
+        self.ml_url = ml_url
+        self.base_url = f"http://{self.ip_address}:{self.port}"
+        self.client = Client(url=self.base_url, api_key=api_key)
+        self.ls = LabelStudio(base_url=self.base_url, api_key=api_key)
+
+    def create_project_and_upload_images(
+        self, title: str, label_config: str, image_paths: Sequence[Path]
+    ) -> int:
+        """Create a new Label Studio project and upload local images to it.
+
+        Args:
+            title: Project title
+            label_config: Label configuration XML
+            image_paths: List of local image file paths
+
+        Returns:
+            Created project ID
+
+        Raises:
+            Exception: If project creation or image upload fails
+        """
+        try:
+            # Create new project
+            project = self.client.start_project(title=title, label_config=label_config)
+
+            if not project or not hasattr(project, "id") or project.id is None:
+                raise Exception("Failed to create Label Studio project")
+
+            logger.info(f"Created Label Studio project '{title}' with ID: {project.id}")
+            self.project_id = project.id
+
+            # Upload images to the project
+            if image_paths:
+                self._upload_local_images(project.id, image_paths)
+
+            self.ls.ml.create(project=project.id, url=self.ml_url, is_interactive=True)
+
+            return project.id
+
+        except Exception as e:
+            if self.project_id:
+                self.client.delete_project(self.project_id)
+            logger.error(f"Failed to create project and upload images: {e}")
+            raise Exception(f"Failed to create Label Studio project: {e}")
+
+    def _upload_local_images(
+        self, project_id: int, image_paths: Sequence[Path]
+    ) -> None:
+        """Upload local image files to a Label Studio project.
+
+        Args:
+            project_id: Label Studio project ID
+            image_paths: List of local image file paths
+        """
+        try:
+            tasks = []
+
+            for image_path in image_paths:
+                if not image_path.exists() or not image_path.is_file():
+                    logger.warning(f"Skipping non-existent file: {image_path}")
+                    continue
+
+                # Read and encode image file
+                try:
+                    with open(image_path, "rb") as f:
+                        image_data = f.read()
+
+                    # Get MIME type
+                    mime_type, _ = mimetypes.guess_type(str(image_path))
+                    if mime_type is None:
+                        mime_type = "image/jpeg"  # Default fallback
+
+                    # Encode as base64 data URL
+                    encoded_image = base64.b64encode(image_data).decode("utf-8")
+                    data_url = f"data:{mime_type};base64,{encoded_image}"
+
+                    # Create task data
+                    task_data = {"image": data_url, "filename": image_path.name}
+
+                    tasks.append(task_data)
+                    logger.debug(f"Prepared task for image: {image_path.name}")
+
+                except Exception as e:
+                    logger.error(f"Failed to process image {image_path}: {e}")
+                    continue
+
+            if tasks:
+                # Import tasks to Label Studio
+                project = self.client.get_project(project_id)
+                project.import_tasks(tasks)
+                logger.info(
+                    f"Successfully uploaded {len(tasks)} images to project {project_id}"
+                )
+            else:
+                logger.warning("No valid images found to upload")
+
+        except Exception as e:
+            logger.error(f"Failed to upload images to project {project_id}: {e}")
+            raise Exception(f"Failed to upload images: {e}")
+
+    def get_project_tasks(
+        self, project_id: Optional[int] = None
+    ) -> list[Dict[str, Any]]:
+        """Get all tasks from a Label Studio project.
+
+        Args:
+            project_id: Project ID (uses instance project_id if not provided)
+
+        Returns:
+            List of task dictionaries
+        """
+        target_project_id = project_id or self.project_id
+        if target_project_id is None:
+            raise Exception("No project ID specified")
+
+        try:
+            project = self.client.get_project(target_project_id)
+            tasks = project.get_tasks()
+            logger.info(
+                f"Retrieved {len(tasks)} tasks from project {target_project_id}"
+            )
+            return tasks
+        except Exception as e:
+            logger.error(f"Failed to get tasks from project {target_project_id}: {e}")
+            raise Exception(f"Failed to get project tasks: {e}")
