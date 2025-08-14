@@ -96,13 +96,13 @@ class ProjectService:
             )
             
             self.ml_backend.train(annotated_data)
-            predictions = self.ml_backend.predict(
+            probabilities = self.ml_backend.predict(
                 [path for path in image_paths if path not in annotated_data.keys()]
             )
-            print(predictions)
+            print(probabilities)
             
             selected_paths = self.active_learning_client.select_images(
-                image_paths, predictions, self.al_batch
+                image_paths, probabilities, self.al_batch
             )
 
             project_title = f"{self.name}_epoch_{self.epoch}"
