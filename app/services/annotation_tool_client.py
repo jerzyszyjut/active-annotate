@@ -26,3 +26,23 @@ class AnnotationToolClientService:
             self.project_id = new_project.id
         else:
             raise Exception("Failed to create Label Studio project")
+
+    def get_annotated_data(self):
+        tasks = self.ls.tasks.list(project=self.project_id, fields='all')
+
+        results = {}
+
+        for task in tasks:
+            if not task.annotations:
+                continue
+            
+            image_name = task.data.get("image")
+            label = task.annotations[0]["result"][0]["value"]["choices"][0]
+            
+            results[image_name] = label
+
+        return results
+        
+if __name__ == "__main__":
+    atc = AnnotationToolClientService("127.0.0.1", "8080", 19, "")
+    atc.get_annotated_data()
