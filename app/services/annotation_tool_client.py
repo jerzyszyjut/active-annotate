@@ -1,5 +1,6 @@
 from label_studio_sdk import LabelStudio
 from pathlib import Path
+import requests
 from typing import Sequence, Optional, Dict, Any
 import logging
 import base64
@@ -25,6 +26,27 @@ class AnnotationToolClientService:
         self.base_url = f"http://{self.ip_address}:{self.port}"
         self.ls = LabelStudio(base_url=self.base_url, api_key=api_key)
 
+    def _create_webhook(self):
+        response = requests.post(
+            f"http://{self.ip_address}:{self.port}/api/webhooks",
+            headers={
+                "Authorization": f"Token {self.api_key}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "project": self.project_id,
+                "url": "http://localhost:8000/active-learning/check-tasks",
+                "send_payload": True,
+                "send_for_all_actions": False,
+                "headers": {},
+                "is_active": True,
+                "actions": ["ANNOTATION_CREATED", "ANNOTATION_UPDATED"]
+            }
+        )
+
+        if not response.ok:
+            raise Exception("Failed to create webhook to the project")
+        
     def create_project_and_upload_images(
         self, title: str, label_config: str, image_paths: Sequence[Path]
     ) -> int:
@@ -54,6 +76,8 @@ class AnnotationToolClientService:
             # Upload images to the project
             if image_paths:
                 self._upload_local_images(project.id, image_paths)
+
+            self._create_webhook()
 
             self.ls.ml.create(project=project.id, url=self.ml_url, is_interactive=True)
 
