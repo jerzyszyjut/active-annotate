@@ -23,4 +23,9 @@ class Project(SQLModel, table=True):
     annotation_tool_client_id: Optional[int] = Field(
         default=None, foreign_key="annotationtoolclient.id"
     )
-    storage_id: Optional[int] = Field(default=None, foreign_key="storage.id")
+    storage_id: Optional[int] = Field(
+        default=None, foreign_key="storage.id"
+    )
+    active_learning_client_id: Optional[int] = Field(
+        default=None, foreign_key="activelearningclient.id"
+    )

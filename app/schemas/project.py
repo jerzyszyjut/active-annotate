@@ -22,6 +22,7 @@ class ProjectCreate(BaseModel):
     description: Optional[str] = None
     annotation_tool_client_id: Optional[int] = None
     storage_id: Optional[int] = None
+    active_learning_client_id: Optional[int] = None
     epoch: int = Field(default=0)
 
 
@@ -32,6 +33,7 @@ class ProjectUpdate(BaseModel):
     description: Optional[str] = None
     annotation_tool_client_id: Optional[int] = None
     storage_id: Optional[int] = None
+    active_learning_client_id: Optional[int] = None
     epoch: Optional[int] = None
 
 
@@ -45,6 +47,7 @@ class ProjectRead(BaseModel):
     description: Optional[str] = None
     annotation_tool_client_id: Optional[int] = None
     storage_id: Optional[int] = None
+    active_learning_client_id: Optional[int] = None
     epoch: int
 
     model_config = {"from_attributes": True}

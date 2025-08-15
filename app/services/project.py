@@ -1,3 +1,5 @@
+import random
+
 from app.services.annotation_tool_client import AnnotationToolClientService
 from app.services.storage import StorageService
 from app.services.active_learning_client import ActiveLearningClientService
@@ -34,19 +36,28 @@ class ProjectService:
 
     def select_batch(self):
         image_paths = self.storage.get_image_paths()
-        annotated_data = self.active_learning_client.update_annotation(
-            self.annotation_service.get_annotated_data()
-        )
-        
-        self.ml_backend.train(annotated_data)
-        probabilities = self.ml_backend.predict(
-            [path for path in image_paths if path not in annotated_data.keys()], num_of_classes=3
-        )
-        print(probabilities)
-        
-        selected_paths = self.active_learning_client.select_images(
-            image_paths, probabilities, self.al_batch
-        )
+
+        if self.epoch > 0:
+            annotated_data = self.active_learning_client.update_annotation(
+                self.annotation_service.get_annotated_data()
+            )
+            
+            self.ml_backend.train(annotated_data)
+            
+            non_annotated_image_paths = [path for path in image_paths if path not in annotated_data.keys()]
+            probabilities = self.ml_backend.predict(
+                non_annotated_image_paths, num_of_classes=3
+            )
+            print(probabilities)
+            
+            selected_paths = self.active_learning_client.select_images(
+                non_annotated_image_paths, probabilities, self.al_batch
+            )
+        else:
+            if len(image_paths) >= self.al_batch:
+                selected_paths = random.sample(image_paths, k=self.al_batch)
+            else:
+                selected_paths = image_paths
 
         self.annotation_service.add_tasks(
             title=f"{self.name}_{self.epoch}",
