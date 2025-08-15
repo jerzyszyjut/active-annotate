@@ -21,7 +21,7 @@ class Settings(BaseSettings):
         POSTGRES_PORT (int): PostgreSQL server port.
     """
 
-    model_config = SettingsConfigDict(env_file=".env", case_sensitive=True)
+    model_config = SettingsConfigDict(env_file=".env", case_sensitive=True, extra="ignore")
 
     PROJECT_NAME: str = "Active Annotate API"
     VERSION: str = "0.1.0"

@@ -91,19 +91,28 @@ class ProjectService:
         """Select and upload the next batch of images to a new project."""
         try:
             image_paths = self.storage.get_image_paths()
-            annotated_data = self.active_learning_client.update_annotation(
-                self.annotation_service.get_annotated_data()
-            )
-            
-            self.ml_backend.train(annotated_data)
-            probabilities = self.ml_backend.predict(
-                [path for path in image_paths if path not in annotated_data.keys()]
-            )
-            print(probabilities)
-            
-            selected_paths = self.active_learning_client.select_images(
-                image_paths, probabilities, self.al_batch
-            )
+    
+            if self.epoch > 0:
+                annotated_data = self.active_learning_client.update_annotation(
+                    self.annotation_service.get_annotated_data()
+                )
+                
+                self.ml_backend.train(annotated_data)
+                
+                non_annotated_image_paths = [path for path in image_paths if path not in annotated_data.keys()]
+                probabilities = self.ml_backend.predict(
+                        non_annotated_image_paths
+                    )
+                print(probabilities)
+                
+                selected_paths = self.active_learning_client.select_images(
+                    non_annotated_image_paths, probabilities, self.al_batch
+                )
+            else:
+                if len(image_paths) >= self.al_batch:
+                    selected_paths = random.sample(image_paths, k=self.al_batch)
+                else:
+                    selected_paths = image_paths
 
             project_title = f"{self.name}_epoch_{self.epoch}"
             project_id = self.annotation_service.create_project_and_upload_images(

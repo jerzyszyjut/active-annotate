@@ -5,12 +5,15 @@ import logging
 from app.crud.project import ProjectCRUD
 from app.crud.annotation_tool_client import AnnotationToolClientCRUD
 from app.crud.storage import StorageCRUD
+from app.crud.active_learning_client import ActiveLearningClientCRUD
+
 from app.core.config import settings
 
 from app.db.database import get_session
 
 from app.schemas.project import ProjectUpdate
 from app.schemas.annotation_tool_client import AnnotationToolClientUpdate
+from app.schemas.active_learning_client import ActiveLearningClientUpdate
 from app.schemas.active_learning import (
     CheckTasksRequest,
     CheckTasksResponse,
@@ -20,6 +23,8 @@ from app.schemas.active_learning import (
 from app.services.project import ProjectService
 from app.services.annotation_tool_client import AnnotationToolClientService
 from app.services.storage import StorageService
+from app.services.active_learning_client import ActiveLearningClientService
+from app.services.ml_backend import MlBackendService
 
 logger = logging.getLogger(__name__)
 
@@ -36,10 +41,12 @@ async def start_active_learning(
     project_crud = ProjectCRUD()
     db_project = await project_crud.get_project_by_id(project_id, session)
 
-    if not db_project.annotation_tool_client_id or not db_project.storage_id:
+    if not db_project.annotation_tool_client_id or \
+       not db_project.storage_id or \
+       not db_project.active_learning_client_id:
         raise HTTPException(
             status_code=400,
-            detail="Project missing annotation tool client or storage configuration",
+            detail="Project missing concluded classes configs",
         )
 
     annotation_tool_client_crud = AnnotationToolClientCRUD()
@@ -54,6 +61,13 @@ async def start_active_learning(
     storage_crud = StorageCRUD()
     db_storage = await storage_crud.get_storage_by_id(db_project.storage_id, session)
 
+    active_learning_client_crud = ActiveLearningClientCRUD()
+    db_active_learning_client = (
+        await active_learning_client_crud.get_active_learning_client_by_id(
+            db_project.active_learning_client_id, session
+        )
+    )
+
     try:
         storage = StorageService(path=db_storage.path)
         annotation_tool_client = AnnotationToolClientService(
@@ -63,14 +77,20 @@ async def start_active_learning(
             ml_url=ml_url,
             project_id=db_annotation_tool_client.ls_project_id,  # May be None initially
         )
+        active_learning_client = ActiveLearningClientService(
+            annotated_data=db_active_learning_client.data,
+        )
+
         project = ProjectService(
             storage,
             annotation_tool_client,
+            active_learning_client,
+            MlBackendService(),
             db_project.name,
-            db_project.active_learning_batch_size,
-            db_project.label_config,
-            db_project.epoch,
-        )
+                db_project.active_learning_batch_size,
+                db_project.label_config,
+                db_project.epoch,
+            )
 
         # Create the project and get the Label Studio project ID
         created_project_id = project.create_project_with_initial_batch()
@@ -85,6 +105,12 @@ async def start_active_learning(
         # Update project epoch
         await project_crud.update_project(
             db_project.id, ProjectUpdate(epoch=project.epoch), session
+        )
+
+        await active_learning_client_crud.update_active_learning_client(
+            db_active_learning_client.id,
+            ActiveLearningClientUpdate(data=active_learning_client.annotated_data),
+            session,
         )
 
         return StartActiveLearningResponse(
@@ -142,15 +168,24 @@ async def check_tasks(
     ml_url = f"{settings.ACTIVE_ANNOTATE_HOSTNAME}ml-backend/{db_project.id}/"
 
     if project_data.total_annotations_number == db_project.active_learning_batch_size:
-        if not db_project.annotation_tool_client_id or not db_project.storage_id:
+        if not db_project.annotation_tool_client_id or \
+           not db_project.storage_id or \
+           not db_project.active_learning_client_id:
             raise HTTPException(
                 status_code=400,
-                detail="Project missing annotation tool client or storage configuration",
+                detail="Project missing concluded classes configs",
             )
 
         storage_crud = StorageCRUD()
         db_storage = await storage_crud.get_storage_by_id(
             db_project.storage_id, session
+        )
+
+        active_learning_client_crud = ActiveLearningClientCRUD()
+        db_active_learning_client = (
+            await active_learning_client_crud.get_active_learning_client_by_id(
+                db_project.active_learning_client_id, session
+            )
         )
 
         try:
@@ -162,9 +197,15 @@ async def check_tasks(
                 project_id=db_at_client.ls_project_id,
                 ml_url=ml_url,
             )
+            active_learning_client = ActiveLearningClientService(
+                annotated_data=db_active_learning_client.data,
+            )
+
             project = ProjectService(
                 storage,
                 annotation_tool_client,
+                active_learning_client,
+                MlBackendService(),
                 db_project.name,
                 db_project.active_learning_batch_size,
                 db_project.label_config,
@@ -184,6 +225,13 @@ async def check_tasks(
             # Update project epoch
             await project_crud.update_project(
                 db_project.id, ProjectUpdate(epoch=project.epoch), session
+            )
+
+            # Update active learning client
+            await active_learning_client_crud.update_active_learning_client(
+                db_active_learning_client.id,
+                ActiveLearningClientUpdate(data=active_learning_client.annotated_data),
+                session,
             )
 
             return CheckTasksResponse(
