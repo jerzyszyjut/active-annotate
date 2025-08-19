@@ -1,4 +1,4 @@
-from label_studio_sdk import Client, LabelStudio
+from label_studio_sdk import LabelStudio
 from pathlib import Path
 from typing import Sequence, Optional, Dict, Any
 import logging
@@ -23,7 +23,6 @@ class AnnotationToolClientService:
         self.api_key = api_key
         self.ml_url = ml_url
         self.base_url = f"http://{self.ip_address}:{self.port}"
-        self.client = Client(url=self.base_url, api_key=api_key)
         self.ls = LabelStudio(base_url=self.base_url, api_key=api_key)
 
     def create_project_and_upload_images(
@@ -44,7 +43,7 @@ class AnnotationToolClientService:
         """
         try:
             # Create new project
-            project = self.client.start_project(title=title, label_config=label_config)
+            project = self.ls.projects.create(title=title, label_config=label_config)
 
             if not project or not hasattr(project, "id") or project.id is None:
                 raise Exception("Failed to create Label Studio project")
@@ -62,7 +61,7 @@ class AnnotationToolClientService:
 
         except Exception as e:
             if self.project_id:
-                self.client.delete_project(self.project_id)
+                self.ls.projects.delete(self.project_id)
             logger.error(f"Failed to create project and upload images: {e}")
             raise Exception(f"Failed to create Label Studio project: {e}")
 
@@ -108,9 +107,7 @@ class AnnotationToolClientService:
                     continue
 
             if tasks:
-                # Import tasks to Label Studio
-                project = self.client.get_project(project_id)
-                project.import_tasks(tasks)
+                self.ls.projects.import_tasks(id=project_id, request=tasks)
                 logger.info(
                     f"Successfully uploaded {len(tasks)} images to project {project_id}"
                 )
@@ -137,8 +134,7 @@ class AnnotationToolClientService:
             raise Exception("No project ID specified")
 
         try:
-            project = self.client.get_project(target_project_id)
-            tasks = project.get_tasks()
+            tasks = list(self.ls.tasks.list(project=target_project_id))
             logger.info(
                 f"Retrieved {len(tasks)} tasks from project {target_project_id}"
             )

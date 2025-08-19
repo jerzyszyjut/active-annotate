@@ -8,6 +8,7 @@ from torch import Tensor
 from torch.optim import Optimizer
 import pytorch_lightning as pl
 import torchvision.models as models
+from torchvision.models import ResNet18_Weights
 import torchvision.transforms as transforms
 import torchmetrics
 from torchmetrics import Metric
@@ -23,13 +24,13 @@ class BaseImageClassificationModel(ABC):
         raise NotImplementedError("Subclasses must implement predict method")
 
     def get_version(self) -> str:
-        raise NotImplementedError("Subclasses must implement predict method")
+        raise NotImplementedError("Subclasses must implement get_version method")
 
     def get_name(self) -> str:
-        raise NotImplementedError("Subclasses must implement predict method")
+        raise NotImplementedError("Subclasses must implement get_name method")
 
 
-class ResNetImageClassificactionMLModel(
+class ResNetImageClassificationMLModel(
     pl.LightningModule, BaseImageClassificationModel
 ):
     def __init__(
@@ -51,7 +52,9 @@ class ResNetImageClassificactionMLModel(
         # Create weights directory if it doesn't exist
         os.makedirs(self.weights_dir, exist_ok=True)
 
-        self.model: models.ResNet = models.resnet18(pretrained=True)
+        self.model: models.ResNet = models.resnet18(
+            weights=ResNet18_Weights.IMAGENET1K_V1
+        )
 
         # Initialize criterion and metrics
         self.criterion: nn.CrossEntropyLoss = nn.CrossEntropyLoss()

@@ -11,7 +11,7 @@ import pytorch_lightning as pl
 from fastapi import FastAPI, Request, UploadFile, HTTPException, BackgroundTasks
 from fastapi.responses import JSONResponse
 
-from model import ResNetImageClassificactionMLModel
+from model import ResNetImageClassificationMLModel
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 app = FastAPI()
 
 
-MODEL = ResNetImageClassificactionMLModel(weights_dir="model_weights")
+MODEL = ResNetImageClassificationMLModel(weights_dir="model_weights")
 IS_TRAINING = False
 
 
@@ -87,7 +87,7 @@ async def train_model_background(zip_content: bytes):
         num_classes = len(dataset.classes)
         class_names = dataset.classes
         logger.info(f"Initializing model with {num_classes} classes: {class_names}")
-        model = ResNetImageClassificactionMLModel(
+        model = ResNetImageClassificationMLModel(
             num_classes=num_classes, class_names=class_names
         )
 
