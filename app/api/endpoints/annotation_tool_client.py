@@ -1,4 +1,4 @@
-"""Project API routes.
+"""Annotation tool API routes.
 
 This module contains all the endpoints for managing annotation tools in the Active Annotate API.
 """

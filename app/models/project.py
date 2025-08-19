@@ -19,6 +19,7 @@ class Project(SQLModel, table=True):
     label_config: str = Field(max_length=1000)
     description: Optional[str] = Field(default=None, max_length=1000)
     epoch: int = Field(default=0)
+    ml_backend_url: Optional[str] = Field(default=None, max_length=1000)
 
     annotation_tool_client_id: Optional[int] = Field(
         default=None, foreign_key="annotationtoolclient.id"

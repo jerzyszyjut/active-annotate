@@ -23,6 +23,7 @@ class ProjectCreate(BaseModel):
     annotation_tool_client_id: Optional[int] = None
     storage_id: Optional[int] = None
     epoch: int = Field(default=0)
+    ml_backend_url: Optional[str] = None
 
 
 class ProjectUpdate(BaseModel):
@@ -33,6 +34,7 @@ class ProjectUpdate(BaseModel):
     annotation_tool_client_id: Optional[int] = None
     storage_id: Optional[int] = None
     epoch: Optional[int] = None
+    ml_backend_url: Optional[str] = None
 
 
 class ProjectRead(BaseModel):
@@ -46,5 +48,6 @@ class ProjectRead(BaseModel):
     annotation_tool_client_id: Optional[int] = None
     storage_id: Optional[int] = None
     epoch: int
+    ml_backend_url: Optional[str] = None
 
     model_config = {"from_attributes": True}

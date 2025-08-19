@@ -36,6 +36,7 @@ services:
       - .:/app
       - /app/__pycache__
       - /app/.pytest_cache
+      - ./data:/data
     ports:
       - "8000:8000"
     depends_on:
@@ -62,9 +63,34 @@ services:
     networks:
       - active-annotate-dev-network
 
+  ml-backend:
+    build:
+      context: ml_backend
+      dockerfile: Dockerfile
+    container_name: active-annotate-ml-backend
+    ports:
+      - "8888:8000"
+    volumes:
+      - ./ml_backend:/app
+      - ./ml_backend/weights:/app/weights
+    networks:
+      - active-annotate-dev-network
+
+  label-studio:
+    image: heartexlabs/label-studio:latest
+    ports:
+      - "8080:8080"
+    volumes:
+      - label-studio-data:/label-studio/data
+    networks:
+      - active-annotate-dev-network
+    environment:
+      - LABEL_STUDIO_ENABLE_LEGACY_API_TOKEN=true
+
 volumes:
   postgres_dev_data:
   pgadmin_dev_data:
+  label-studio-data:
 
 networks:
   active-annotate-dev-network:

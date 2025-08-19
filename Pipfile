@@ -22,6 +22,7 @@ asyncpg = "*"
 aiosqlite = "*"
 pytest-cov = "*"
 label-studio-sdk = "*"
+aiohttp = "*"
 
 [dev-packages]
 

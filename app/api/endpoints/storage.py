@@ -35,7 +35,7 @@ async def get_storages(
     return await storage_crud.get_storages(skip, limit, session)
 
 
-@router.get("/{project_id}", response_model=StorageRead)
+@router.get("/{storage_id}", response_model=StorageRead)
 async def get_storage(
     storage_id: int, session: AsyncSession = Depends(get_session)
 ) -> StorageRead:
@@ -44,7 +44,7 @@ async def get_storage(
     return await storage_crud.get_storage_by_id(storage_id, session)
 
 
-@router.put("/{project_id}", response_model=StorageRead)
+@router.put("/{storage_id}", response_model=StorageRead)
 async def update_storage(
     storage_id: int,
     storage_update: StorageUpdate,
