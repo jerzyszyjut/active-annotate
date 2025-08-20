@@ -4,6 +4,7 @@ from typing import Sequence, Optional, Dict, Any
 import logging
 import base64
 import mimetypes
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -23,26 +24,15 @@ class AnnotationToolClientService:
         self.api_key = api_key
         self.ml_url = ml_url
         self.base_url = f"http://{self.ip_address}:{self.port}"
+        self.check_tasks_url = (
+            f"{settings.ACTIVE_ANNOTATE_HOSTNAME}active-learning/check-tasks"
+        )
         self.ls = LabelStudio(base_url=self.base_url, api_key=api_key)
 
     def create_project_and_upload_images(
         self, title: str, label_config: str, image_paths: Sequence[Path]
     ) -> int:
-        """Create a new Label Studio project and upload local images to it.
-
-        Args:
-            title: Project title
-            label_config: Label configuration XML
-            image_paths: List of local image file paths
-
-        Returns:
-            Created project ID
-
-        Raises:
-            Exception: If project creation or image upload fails
-        """
         try:
-            # Create new project
             project = self.ls.projects.create(title=title, label_config=label_config)
 
             if not project or not hasattr(project, "id") or project.id is None:
@@ -51,11 +41,19 @@ class AnnotationToolClientService:
             logger.info(f"Created Label Studio project '{title}' with ID: {project.id}")
             self.project_id = project.id
 
-            # Upload images to the project
             if image_paths:
                 self._upload_local_images(project.id, image_paths)
 
             self.ls.ml.create(project=project.id, url=self.ml_url, is_interactive=True)
+            self.ls.webhooks.create(
+                project=project.id,
+                url=self.check_tasks_url,
+                actions=[
+                    "ANNOTATION_CREATED",
+                    "ANNOTATION_UPDATED",
+                ],
+                headers={"active_annotate_project_id": self.project_id},
+            )
 
             return project.id
 

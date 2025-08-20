@@ -109,19 +109,10 @@ async def check_tasks(
     request: Request,
     session: AsyncSession = Depends(get_session),
 ) -> CheckTasksResponse:
-    # Use host from request body if provided, otherwise fallback to request IP
     project_ip_address = request_data.host or (
         request.client.host if request.client else None
     )
     project_data = request_data.project
-
-    logger.info("Received check-tasks request")
-    logger.info(f"  Host from body: {request_data.host}")
-    logger.info(
-        f"  Host from request: {request.client.host if request.client else None}"
-    )
-    logger.info(f"  Using IP address: {project_ip_address}")
-    logger.info(f"  Project data: {project_data.model_dump()}")
 
     if not project_ip_address:
         raise HTTPException(
