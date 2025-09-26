@@ -53,11 +53,13 @@ async def train_model_background(zip_content: bytes):
         dataset_dir = extract_zip_to_temp_dir(zip_content)
         logger.info(f"Extracted dataset to: {dataset_dir}")
 
+        # Log directory structure for debugging
         for root, dirs, files in os.walk(dataset_dir):
             logger.info(f"Directory: {root}")
             logger.info(f"  Subdirs: {dirs}")
             logger.info(f"  Files: {files[:10]}")
 
+        # Create transforms for PyTorch ImageFolder dataset
         transform = transforms.Compose(
             [
                 transforms.Resize((224, 224)),
@@ -68,12 +70,15 @@ async def train_model_background(zip_content: bytes):
             ]
         )
 
+        # Load dataset using PyTorch ImageFolder format
+        # Expected structure: dataset_dir/class_name/image_files
         dataset = datasets.ImageFolder(root=dataset_dir, transform=transform)
         logger.info(f"Dataset created with {len(dataset)} samples")
         logger.info(f"Dataset classes: {dataset.classes}")
 
         if len(dataset) == 0:
             logger.error("No training data found in the uploaded ZIP file")
+            logger.error("Expected PyTorch ImageFolder format: class_name/image_files")
             IS_TRAINING = False
             return
 
@@ -119,7 +124,7 @@ async def train_model_background(zip_content: bytes):
         MODEL = model
         logger.info("✅ Global MODEL updated with newly trained model")
 
-        IS_TRAINING = True
+        IS_TRAINING = False
 
         logger.info("🎉 Training completed successfully")
         logger.info(
@@ -283,7 +288,7 @@ async def train(
 @app.get("/status")
 async def get_training_progress():
     """Get detailed training progress information."""
-    global TRAINING_STATUS
+    global IS_TRAINING
 
     return JSONResponse(
         {

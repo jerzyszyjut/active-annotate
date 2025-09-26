@@ -3,6 +3,7 @@ import logging
 
 from app.services.annotation_tool_client import AnnotationToolClientService
 from app.services.storage import StorageService
+from app.schemas.project import ProjectRead
 
 logger = logging.getLogger(__name__)
 
@@ -12,17 +13,11 @@ class ProjectService:
         self,
         storage: StorageService,
         annotation_service_config: AnnotationToolClientService,
-        name: str,
-        al_batch: int,
-        label_config: str,
-        epoch: int = 0,
+        project: ProjectRead,
     ):
         self.storage = storage
         self.annotation_service = annotation_service_config
-        self.name = name
-        self.al_batch = al_batch
-        self.label_config = label_config
-        self.epoch = epoch
+        self.project = project
         self.created_project_id = None
 
     def create_project_with_initial_batch(self) -> int:
@@ -42,19 +37,22 @@ class ProjectService:
                 raise Exception("No images found in storage directory")
 
             # Select initial batch
-            if len(image_paths) >= self.al_batch:
-                selected_paths = random.sample(image_paths, k=self.al_batch)
+            if len(image_paths) >= self.project.active_learning_batch_size:
+                selected_paths = random.sample(
+                    image_paths, k=self.project.active_learning_batch_size
+                )
             else:
                 selected_paths = image_paths
                 logger.warning(
-                    f"Only {len(image_paths)} images available, less than batch size {self.al_batch}"
+                    f"Only {len(image_paths)} images available, less than batch size {self.project.active_learning_batch_size}"
                 )
 
             # Create project and upload images
-            project_title = f"{self.name}_epoch_{self.epoch}"
+            project_title = f"{self.project.name}_epoch_{self.project.epoch}"
             project_id = self.annotation_service.create_project_and_upload_images(
                 title=project_title,
-                label_config=self.label_config,
+                label_config=self.project.label_config,
+                project_id=self.project.id,
                 image_paths=selected_paths,
             )
 
@@ -85,15 +83,18 @@ class ProjectService:
         """Select and upload the next batch of images to a new project."""
         try:
             image_paths = self.storage.get_image_paths()
-            if len(image_paths) >= self.al_batch:
-                selected_paths = random.sample(image_paths, k=self.al_batch)
+            if len(image_paths) >= self.project.active_learning_batch_size:
+                selected_paths = random.sample(
+                    image_paths, k=self.project.active_learning_batch_size
+                )
             else:
                 selected_paths = image_paths
 
-            project_title = f"{self.name}_epoch_{self.epoch}"
+            project_title = f"{self.project.name}_epoch_{self.epoch}"
             project_id = self.annotation_service.create_project_and_upload_images(
                 title=project_title,
-                label_config=self.label_config,
+                label_config=self.project.label_config,
+                project_id=self.project.id,
                 image_paths=selected_paths,
             )
 
@@ -113,9 +114,9 @@ class ProjectService:
             Dictionary with project information
         """
         return {
-            "name": self.name,
+            "name": self.project.name,
             "epoch": self.epoch,
-            "batch_size": self.al_batch,
+            "batch_size": self.project.active_learning_batch_size,
             "storage_path": str(self.storage.path),
             "created_project_id": self.created_project_id,
             "total_images": self.storage.get_image_count(),

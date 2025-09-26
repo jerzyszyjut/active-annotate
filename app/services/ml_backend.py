@@ -311,3 +311,48 @@ class MLBackendService:
         except Exception as e:
             logger.error(f"ML backend setup failed: {e}")
             raise
+
+    async def train_model(self, dataset_data: bytes) -> dict:
+        """Train the ML model with annotated dataset.
+
+        Args:
+            dataset_data: ZIP file containing training dataset
+
+        Returns:
+            Training response from ML backend
+        """
+        try:
+            async with httpx.AsyncClient() as client:
+                files = {
+                    "dataset_file": (
+                        "training_dataset.zip",
+                        BytesIO(dataset_data),
+                        "application/zip",
+                    )
+                }
+                response = await client.post(
+                    f"{self.ml_backend_url}train",
+                    files=files,
+                    timeout=60.0,  # Longer timeout for training initiation
+                )
+                response.raise_for_status()
+                logger.info("ML backend training initiated successfully")
+                return response.json()
+        except Exception as e:
+            logger.error(f"ML backend training failed: {e}")
+            raise
+
+    async def get_training_status(self) -> dict:
+        """Get the current training status from ML backend.
+
+        Returns:
+            Training status information
+        """
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(f"{self.ml_backend_url}status")
+                response.raise_for_status()
+                return response.json()
+        except Exception as e:
+            logger.error(f"Failed to get training status: {e}")
+            raise

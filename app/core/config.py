@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "Active Annotate API"
     VERSION: str = "0.1.0"
     DESCRIPTION: str = "Backend API for managing active learning annotation projects"
-    ACTIVE_ANNOTATE_HOSTNAME: str = "http://api-dev:8000/"
+    ACTIVE_ANNOTATE_HOSTNAME: str = "http://api-dev.local:8000/"
     BACKEND_CORS_ORIGINS: Optional[List[str]] = None
 
     POSTGRES_SERVER: str = "localhost"

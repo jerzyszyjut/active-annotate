@@ -16,11 +16,11 @@ class AnnotationToolClientService:
         port: int,
         api_key: str,
         ml_url: str,
-        project_id: Optional[int] = None,
+        label_studio_project_id: Optional[int] = None,
     ):
         self.ip_address = ip_address
         self.port = port
-        self.project_id = project_id
+        self.label_studio_project_id = label_studio_project_id
         self.api_key = api_key
         self.ml_url = ml_url
         self.base_url = f"http://{self.ip_address}:{self.port}"
@@ -30,7 +30,11 @@ class AnnotationToolClientService:
         self.ls = LabelStudio(base_url=self.base_url, api_key=api_key)
 
     def create_project_and_upload_images(
-        self, title: str, label_config: str, image_paths: Sequence[Path]
+        self,
+        title: str,
+        project_id: int,
+        label_config: str,
+        image_paths: Sequence[Path],
     ) -> int:
         try:
             project = self.ls.projects.create(title=title, label_config=label_config)
@@ -39,7 +43,7 @@ class AnnotationToolClientService:
                 raise Exception("Failed to create Label Studio project")
 
             logger.info(f"Created Label Studio project '{title}' with ID: {project.id}")
-            self.project_id = project.id
+            self.label_studio_project_id = project.id
 
             if image_paths:
                 self._upload_local_images(project.id, image_paths)
@@ -52,24 +56,24 @@ class AnnotationToolClientService:
                     "ANNOTATION_CREATED",
                     "ANNOTATION_UPDATED",
                 ],
-                headers={"active_annotate_project_id": self.project_id},
+                headers={"active_annotate_project_id": str(project_id)},
             )
 
             return project.id
 
         except Exception as e:
-            if self.project_id:
-                self.ls.projects.delete(self.project_id)
+            if self.label_studio_project_id:
+                self.ls.projects.delete(self.label_studio_project_id)
             logger.error(f"Failed to create project and upload images: {e}")
             raise Exception(f"Failed to create Label Studio project: {e}")
 
     def _upload_local_images(
-        self, project_id: int, image_paths: Sequence[Path]
+        self, label_studio_project_id: int, image_paths: Sequence[Path]
     ) -> None:
         """Upload local image files to a Label Studio project.
 
         Args:
-            project_id: Label Studio project ID
+            label_studio_project_id: Label Studio project ID
             image_paths: List of local image file paths
         """
         try:
@@ -105,19 +109,21 @@ class AnnotationToolClientService:
                     continue
 
             if tasks:
-                self.ls.projects.import_tasks(id=project_id, request=tasks)
+                self.ls.projects.import_tasks(id=label_studio_project_id, request=tasks)
                 logger.info(
-                    f"Successfully uploaded {len(tasks)} images to project {project_id}"
+                    f"Successfully uploaded {len(tasks)} images to project {label_studio_project_id}"
                 )
             else:
                 logger.warning("No valid images found to upload")
 
         except Exception as e:
-            logger.error(f"Failed to upload images to project {project_id}: {e}")
+            logger.error(
+                f"Failed to upload images to project {label_studio_project_id}: {e}"
+            )
             raise Exception(f"Failed to upload images: {e}")
 
     def get_project_tasks(
-        self, project_id: Optional[int] = None
+        self, label_studio_project_id: Optional[int] = None
     ) -> list[Dict[str, Any]]:
         """Get all tasks from a Label Studio project.
 
@@ -127,7 +133,7 @@ class AnnotationToolClientService:
         Returns:
             List of task dictionaries
         """
-        target_project_id = project_id or self.project_id
+        target_project_id = label_studio_project_id or self.label_studio_project_id
         if target_project_id is None:
             raise Exception("No project ID specified")
 
@@ -140,3 +146,44 @@ class AnnotationToolClientService:
         except Exception as e:
             logger.error(f"Failed to get tasks from project {target_project_id}: {e}")
             raise Exception(f"Failed to get project tasks: {e}")
+
+    def export_annotations(
+        self, label_studio_project_id: Optional[int] = None, export_format: str = "JSON"
+    ) -> bytes:
+        """Export annotations from a Label Studio project.
+
+        Args:
+            project_id: Project ID (uses instance project_id if not provided)
+            export_format: Export format (JSON, COCO, etc.)
+
+        Returns:
+            Exported data as bytes
+        """
+        target_project_id = label_studio_project_id or self.label_studio_project_id
+        if target_project_id is None:
+            raise Exception("No project ID specified")
+
+        try:
+            # Use the Label Studio SDK to export annotations
+            # First create an export
+            export_request = self.ls.projects.exports.create(
+                project_id=target_project_id
+            )
+
+            # Wait for export to complete and download
+            export_data_iterator = self.ls.projects.exports.download(
+                project_id=target_project_id, export_pk=str(export_request.id)
+            )
+
+            # Convert iterator to bytes
+            export_data = b"".join(export_data_iterator)
+
+            logger.info(
+                f"Successfully exported annotations from project {target_project_id} in {export_format} format"
+            )
+            return export_data
+        except Exception as e:
+            logger.error(
+                f"Failed to export annotations from project {target_project_id}: {e}"
+            )
+            raise Exception(f"Failed to export annotations: {e}")

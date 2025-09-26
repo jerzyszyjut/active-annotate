@@ -20,7 +20,7 @@ services:
     networks:
       - active-annotate-dev-network
 
-  api-dev:
+  api-dev.local:
     build:
       context: .
       dockerfile: Dockerfile
