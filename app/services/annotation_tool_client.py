@@ -51,12 +51,11 @@ class AnnotationToolClientService:
             self.ls.ml.create(project=project.id, url=self.ml_url, is_interactive=True)
             self.ls.webhooks.create(
                 project=project.id,
-                url=self.check_tasks_url,
+                url=f"{self.check_tasks_url}/{str(project_id)}",
                 actions=[
                     "ANNOTATION_CREATED",
                     "ANNOTATION_UPDATED",
-                ],
-                headers={"active_annotate_project_id": str(project_id)},
+                ]
             )
 
             return project.id
@@ -122,9 +121,7 @@ class AnnotationToolClientService:
             )
             raise Exception(f"Failed to upload images: {e}")
 
-    def get_project_tasks(
-        self, label_studio_project_id: Optional[int] = None
-    ) -> list[Dict[str, Any]]:
+    def get_project_tasks(self) -> list[Dict[str, Any]]:
         """Get all tasks from a Label Studio project.
 
         Args:
@@ -133,18 +130,17 @@ class AnnotationToolClientService:
         Returns:
             List of task dictionaries
         """
-        target_project_id = label_studio_project_id or self.label_studio_project_id
-        if target_project_id is None:
+        if self.label_studio_project_id is None:
             raise Exception("No project ID specified")
 
         try:
-            tasks = list(self.ls.tasks.list(project=target_project_id))
+            tasks = list(self.ls.tasks.list(project=self.label_studio_project_id))
             logger.info(
-                f"Retrieved {len(tasks)} tasks from project {target_project_id}"
+                f"Retrieved {len(tasks)} tasks from project {self.label_studio_project_id}"
             )
             return tasks
         except Exception as e:
-            logger.error(f"Failed to get tasks from project {target_project_id}: {e}")
+            logger.error(f"Failed to get tasks from project {self.label_studio_project_id}: {e}")
             raise Exception(f"Failed to get project tasks: {e}")
 
     def export_annotations(

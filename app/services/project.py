@@ -2,7 +2,10 @@ import random
 import logging
 
 from app.services.annotation_tool_client import AnnotationToolClientService
+from app.services.active_learning_client import ActiveLearningClientService
 from app.services.storage import StorageService
+from app.services.ml_backend import MLBackendService
+
 from app.schemas.project import ProjectRead
 
 logger = logging.getLogger(__name__)
@@ -67,30 +70,47 @@ class ProjectService:
             logger.error(f"Failed to create project with initial batch: {e}")
             raise Exception(f"Project creation failed: {e}")
 
-    def start_active_learning(self):
+    async def start_active_learning(self):
         """Start active learning by creating a project with the first batch."""
         if self.created_project_id is None:
             self.create_project_with_initial_batch()
         else:
-            self.start_next_epoch()
+            await self.start_next_epoch()
 
-    def start_next_epoch(self):
+    async def start_next_epoch(self):
         """Start the next epoch by creating a new project with the next batch."""
-        self.epoch += 1
-        self.select_batch()
+        self.project.epoch += 1
+        await self.select_batch()
 
-    def select_batch(self):
+    async def select_batch(self):
         """Select and upload the next batch of images to a new project."""
         try:
-            image_paths = self.storage.get_image_paths()
-            if len(image_paths) >= self.project.active_learning_batch_size:
-                selected_paths = random.sample(
-                    image_paths, k=self.project.active_learning_batch_size
-                )
-            else:
-                selected_paths = image_paths
+            tasks = self.annotation_service.get_project_tasks()
 
-            project_title = f"{self.project.name}_epoch_{self.epoch}"
+            if not self.project.annotated_image_paths:
+                self.project.annotated_image_paths = []
+
+            root_image_path = self.storage.get_root_path()
+            self.project.annotated_image_paths += [
+                root_image_path / task.data["filename"] for task in tasks
+            ]
+            image_paths = self.storage.get_image_paths()
+
+            non_annotated_image_paths = [path for path in image_paths if path not in self.project.annotated_image_paths]
+
+            if not self.project.ml_backend_url:
+                raise Exception("ML Backend not assosiated with project.")
+            
+            ml_backend = MLBackendService(self.project.ml_backend_url)
+            predictions = await ml_backend.predict(non_annotated_image_paths, self.project.label_config, None)
+            
+            active_learning_client = ActiveLearningClientService()
+            selected_paths = active_learning_client.select_images(
+                predictions=predictions,
+                al_batch=self.project.active_learning_batch_size
+            )
+
+            project_title = f"{self.project.name}_epoch_{self.project.epoch}"
             project_id = self.annotation_service.create_project_and_upload_images(
                 title=project_title,
                 label_config=self.project.label_config,
@@ -100,11 +120,11 @@ class ProjectService:
 
             self.created_project_id = project_id
             logger.info(
-                f"Created epoch {self.epoch} project with {len(selected_paths)} images"
+                f"Created epoch {self.project.epoch} project with {len(selected_paths)} images"
             )
 
         except Exception as e:
-            logger.error(f"Failed to select batch for epoch {self.epoch}: {e}")
+            logger.error(f"Failed to select batch for epoch {self.project.epoch}: {e}")
             raise Exception(f"Batch selection failed: {e}")
 
     def get_project_info(self) -> dict:
@@ -115,7 +135,7 @@ class ProjectService:
         """
         return {
             "name": self.project.name,
-            "epoch": self.epoch,
+            "epoch": self.project.epoch,
             "batch_size": self.project.active_learning_batch_size,
             "storage_path": str(self.storage.path),
             "created_project_id": self.created_project_id,

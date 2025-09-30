@@ -8,6 +8,7 @@ import base64
 import logging
 import xml.etree.ElementTree as ET
 from io import BytesIO
+from pathlib import Path
 from typing import List, Optional, Tuple, Dict, Any
 
 import httpx
@@ -284,7 +285,7 @@ class MLBackendService:
         }
 
         return PredictionValue(
-            result=[prediction_result], score=confidence, model_version=model_version
+            result=[prediction_result], score=confidence, model_version=model_version, filename=ml_prediction["filename"]
         )
 
     async def health_check(self) -> dict:
@@ -356,3 +357,49 @@ class MLBackendService:
         except Exception as e:
             logger.error(f"Failed to get training status: {e}")
             raise
+
+    async def _process_single_image(
+        self,
+        image_path: Path,
+        model_version: Optional[str],
+        label_config_info: Dict[str, Any],
+    ) -> List[PredictionValue]:
+        task_predictions = []
+
+        try:
+            with open(image_path, "rb") as f:
+                image = f.read()
+                image_bytes = bytes(image)
+
+            prediction_result = await self._get_ml_prediction(
+                image_bytes, "", str(image_path)
+            )
+
+            if prediction_result:
+                formatted_prediction = self._format_prediction_for_label_studio(
+                    prediction_result, model_version, label_config_info
+                )
+                task_predictions.append(formatted_prediction)
+
+        except Exception as e:
+            logger.error(f"Error processing {image_path} image")
+
+        return task_predictions
+
+    async def predict(
+        self,
+        image_paths: list[Path],
+        label_config: Optional[str],
+        model_version: Optional[str],
+    ) -> PredictResponse:
+        label_config_info = self._parse_label_config(label_config)
+
+        results = []
+
+        for image_path in image_paths:
+            task_predictions = await self._process_single_image(
+                image_path, model_version, label_config_info
+            )
+            results.append(task_predictions)
+
+        return PredictResponse(results=results)

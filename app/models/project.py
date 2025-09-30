@@ -1,8 +1,9 @@
 from __future__ import annotations
 from datetime import datetime, UTC
-from typing import Optional
-from sqlmodel import SQLModel, Field
+from typing import List, Optional
+from sqlmodel import SQLModel, Field, String
 from sqlalchemy import Column, DateTime, func
+from sqlalchemy.dialects.postgresql import ARRAY
 
 
 class Project(SQLModel, table=True):
@@ -20,6 +21,7 @@ class Project(SQLModel, table=True):
     description: Optional[str] = Field(default=None, max_length=1000)
     epoch: int = Field(default=0)
     ml_backend_url: Optional[str] = Field(default=None, max_length=1000)
+    annotated_image_paths: Optional[List] = Field(default_factory=list, sa_column=Column(ARRAY(String)))
 
     annotation_tool_client_id: Optional[int] = Field(
         default=None, foreign_key="annotationtoolclient.id"

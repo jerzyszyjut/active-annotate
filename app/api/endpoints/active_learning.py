@@ -119,13 +119,24 @@ async def check_tasks(
         db_project = await project_crud.get_project_by_id(project_id, session)
         logger.info(f"Found project: {db_project.id}")
 
-        # Find the annotation tool client associated with this project
-        if not db_project.annotation_tool_client_id:
+        # Check if we have reached the target number of annotations for this batch
+        if (
+            request_data.project.total_annotations_number
+            < db_project.active_learning_batch_size
+        ):
+            return CheckTasksResponse(
+                message="Batch not complete yet",
+                project_id=None,
+                epoch=db_project.epoch,
+            )
+        
+        if not db_project.annotation_tool_client_id or not db_project.storage_id:
             raise HTTPException(
                 status_code=400,
-                detail="Project has no associated annotation tool client",
+                detail="Project missing annotation tool client or storage configuration",
             )
 
+        # Find the annotation tool client associated with this project
         at_client_crud = AnnotationToolClientCRUD()
         logger.info(
             f"Looking for annotation tool client with ID: {db_project.annotation_tool_client_id}"
@@ -135,12 +146,104 @@ async def check_tasks(
         )
         logger.info(f"Found annotation tool client: {db_at_client.id}")
 
-        # Verify that the Label Studio project ID matches
-        if db_at_client.ls_project_id != request_data.project.id:
-            logger.warning(
-                f"Label Studio project ID mismatch: expected {db_at_client.ls_project_id}, got {request_data.project.id}"
-            )
-            # This is just a warning, we'll continue with the process
+        # Find the storage associated with this project
+        storage_crud = StorageCRUD()
+        logger.info(
+            f"Looking for storage with ID: {db_project.storage_id}"
+        )
+        db_storage = await storage_crud.get_storage_by_id(
+            db_project.storage_id, session
+        )
+        logger.info(f"Found storage: {db_storage.id}")
+
+        ml_url = f"{settings.ACTIVE_ANNOTATE_HOSTNAME}ml-backend/{db_project.id}/"
+        storage = StorageService(path=db_storage.path)
+        annotation_tool_client = AnnotationToolClientService(
+            ip_address=db_at_client.ip_address,
+            port=db_at_client.port,
+            api_key=db_at_client.api_key,
+            label_studio_project_id=db_at_client.ls_project_id,
+            ml_url=ml_url,
+        )
+
+        # Export annotations from the current project
+        logger.info(
+            f"Exporting annotations from project {db_at_client.ls_project_id}"
+        )
+        annotations_data = annotation_tool_client.export_annotations(
+            label_studio_project_id=db_at_client.ls_project_id
+        )
+
+        # # Convert annotations to training dataset
+        # logger.info("Converting annotations to training dataset")
+        # dataset_converter = DatasetConverterService()
+        # training_dataset = (
+        #     dataset_converter.convert_ls_annotations_to_training_dataset(
+        #         annotations_data, db_storage.path
+        #     )
+        # )
+        
+        # # Trigger ML backend training
+        # logger.info("Starting ML backend training")
+        # ml_backend = MLBackendService(ml_url)
+        # training_response = await ml_backend.train_model(training_dataset)
+        # logger.info(f"Training initiated: {training_response}")
+        
+        # # Wait for training to complete
+        # logger.info("Waiting for training to complete...")
+        # training_complete = False
+        # max_wait_time = 3600  # 1 hour maximum wait
+        # check_interval = 30  # Check every 30 seconds
+        # waited_time = 0
+
+        # while not training_complete and waited_time < max_wait_time:
+        #     await asyncio.sleep(check_interval)
+        #     waited_time += check_interval
+
+        #     try:
+        #         status_response = await ml_backend.get_training_status()
+        #         is_training = status_response.get("is_training", True)
+
+        #         if not is_training:
+        #             training_complete = True
+        #             logger.info("Training completed successfully")
+        #         else:
+        #             logger.info(
+        #                 f"Training still in progress... (waited {waited_time}s)"
+        #             )
+
+        #     except Exception as e:
+        #         logger.warning(f"Failed to check training status: {e}")
+
+        # if not training_complete:
+        #     raise HTTPException(
+        #         status_code=408,
+        #         detail="Training did not complete within the expected time",
+        #     )
+        
+        #  # Now start next epoch which creates a new project
+        # logger.info("Training complete, starting next epoch")
+        project = ProjectService(storage, annotation_tool_client, db_project)
+
+        await project.start_next_epoch()
+
+        # Update the annotation tool client with the new project ID
+        await at_client_crud.update_annotation_tool_client(
+            db_at_client.id,
+            AnnotationToolClientUpdate(ls_project_id=project.created_project_id),
+            session,
+        )
+
+        # Update project epoch
+        await project_crud.update_project(
+            db_project.id, ProjectUpdate(epoch=project.project.epoch), session
+        )
+
+        return CheckTasksResponse(
+            message="Training completed and next epoch started successfully",
+            project_id=project.created_project_id,
+            epoch=project.project.epoch,
+        )
 
     except HTTPException as e:
         logger.error(f"Database lookup failed: {e.detail}")
@@ -151,157 +254,3 @@ async def check_tasks(
             status_code=500,
             detail=f"Internal server error: {str(e)}",
         )
-
-
-@router.post(
-    "/check-tasks", status_code=status.HTTP_200_OK, response_model=CheckTasksResponse
-)
-async def check_tasks_legacy(
-    request_data: CheckTasksRequest,
-    request: Request,
-    session: AsyncSession = Depends(get_session),
-    x_project_id: int = None,
-) -> CheckTasksResponse:
-    """Legacy endpoint that uses header-based project identification."""
-
-    # Try to get project ID from header
-    project_id = request.headers.get("X-Project-ID") or request.headers.get(
-        "x-project-id"
-    )
-
-    if not project_id:
-        raise HTTPException(
-            status_code=400,
-            detail="Missing X-Project-ID header. Please use /check-tasks/{project_id} endpoint instead.",
-        )
-
-    try:
-        project_id = int(project_id)
-    except ValueError:
-        raise HTTPException(
-            status_code=400,
-            detail="Invalid project ID in header",
-        )
-
-    # Call the main function with the extracted project ID
-    return await check_tasks(project_id, request_data, request, session)
-
-    ml_url = f"{settings.ACTIVE_ANNOTATE_HOSTNAME}ml-backend/{db_project.id}/"
-
-    # Check if we have reached the target number of annotations for this batch
-    if (
-        request_data.project.total_annotations_number
-        == db_project.active_learning_batch_size
-    ):
-        if not db_project.annotation_tool_client_id or not db_project.storage_id:
-            raise HTTPException(
-                status_code=400,
-                detail="Project missing annotation tool client or storage configuration",
-            )
-
-        storage_crud = StorageCRUD()
-        db_storage = await storage_crud.get_storage_by_id(
-            db_project.storage_id, session
-        )
-
-        try:
-            storage = StorageService(path=db_storage.path)
-            annotation_tool_client = AnnotationToolClientService(
-                ip_address=db_at_client.ip_address,
-                port=db_at_client.port,
-                api_key=db_at_client.api_key,
-                label_studio_project_id=db_at_client.ls_project_id,
-                ml_url=ml_url,
-            )
-
-            # Export annotations from the current project
-            logger.info(
-                f"Exporting annotations from project {db_at_client.ls_project_id}"
-            )
-            annotations_data = annotation_tool_client.export_annotations(
-                label_studio_project_id=db_at_client.ls_project_id
-            )
-
-            # Convert annotations to training dataset
-            logger.info("Converting annotations to training dataset")
-            dataset_converter = DatasetConverterService()
-            training_dataset = (
-                dataset_converter.convert_ls_annotations_to_training_dataset(
-                    annotations_data, db_storage.path
-                )
-            )
-
-            # Trigger ML backend training
-            logger.info("Starting ML backend training")
-            ml_backend = MLBackendService(ml_url)
-            training_response = await ml_backend.train_model(training_dataset)
-            logger.info(f"Training initiated: {training_response}")
-
-            # Wait for training to complete
-            logger.info("Waiting for training to complete...")
-            training_complete = False
-            max_wait_time = 3600  # 1 hour maximum wait
-            check_interval = 30  # Check every 30 seconds
-            waited_time = 0
-
-            while not training_complete and waited_time < max_wait_time:
-                await asyncio.sleep(check_interval)
-                waited_time += check_interval
-
-                try:
-                    status_response = await ml_backend.get_training_status()
-                    is_training = status_response.get("is_training", True)
-
-                    if not is_training:
-                        training_complete = True
-                        logger.info("Training completed successfully")
-                    else:
-                        logger.info(
-                            f"Training still in progress... (waited {waited_time}s)"
-                        )
-
-                except Exception as e:
-                    logger.warning(f"Failed to check training status: {e}")
-
-            if not training_complete:
-                raise HTTPException(
-                    status_code=408,
-                    detail="Training did not complete within the expected time",
-                )
-
-            # Now start next epoch which creates a new project
-            logger.info("Training complete, starting next epoch")
-            project = ProjectService(storage, annotation_tool_client, db_project)
-
-            project.start_next_epoch()
-
-            # Update the annotation tool client with the new project ID
-            await at_client_crud.update_annotation_tool_client(
-                db_at_client.id,
-                AnnotationToolClientUpdate(ls_project_id=project.created_project_id),
-                session,
-            )
-
-            # Update project epoch
-            await project_crud.update_project(
-                db_project.id, ProjectUpdate(epoch=project.epoch), session
-            )
-
-            return CheckTasksResponse(
-                message="Training completed and next epoch started successfully",
-                project_id=project.created_project_id,
-                epoch=project.epoch,
-            )
-
-        except Exception as e:
-            raise HTTPException(
-                status_code=500,
-                detail=f"Failed to complete training and start next epoch: {str(e)}",
-            )
-
-    # If batch is not complete, return status without starting new epoch
-    return CheckTasksResponse(
-        message="Batch not complete yet",
-        project_id=None,
-        epoch=db_project.epoch,
-    )

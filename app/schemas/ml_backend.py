@@ -29,7 +29,7 @@ class PredictionValue(BaseModel):
     neighbors: Optional[Dict[str, Any]] = None
     mislabeling: Optional[float] = None
     model_version: Optional[str] = None
-
+    filename: Optional[str] = None
 
 class LSPredictRequest(BaseModel):
     """Request model for /predict endpoint."""

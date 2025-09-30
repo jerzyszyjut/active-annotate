@@ -19,6 +19,9 @@ class StorageService:
         if not self.path.is_dir():
             logger.error(f"Storage path is not a directory: {self.path}")
             raise ValueError(f"Storage path is not a directory: {self.path}")
+        
+    def get_root_path(self) -> Path:
+        return self.path
 
     def get_image_paths(self) -> List[Path]:
         """Get list of image file paths from the storage directory.
