@@ -23,6 +23,7 @@ aiosqlite = "*"
 pytest-cov = "*"
 label-studio-sdk = "*"
 aiohttp = "*"
+debugpy = "*"
 
 [dev-packages]
 

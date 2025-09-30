@@ -46,7 +46,7 @@ EXPOSE 8000
 ENTRYPOINT ["/entrypoint-dev.sh"]
 
 # Command for development (with hot reload and multiple workers)
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
+CMD ["python", "-Xfrozen_modules=off", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
 
 # Production stage
 FROM base AS production
