@@ -43,12 +43,26 @@ class AnnotationToolClientService:
                 raise Exception("Failed to create Label Studio project")
 
             logger.info(f"Created Label Studio project '{title}' with ID: {project.id}")
+            old_label_studio_project_id = self.label_studio_project_id
             self.label_studio_project_id = project.id
 
             if image_paths:
                 self._upload_local_images(project.id, image_paths)
 
             self.ls.ml.create(project=project.id, url=self.ml_url, is_interactive=True)
+
+            # Delete old webhooks and create new one
+            webhooks = self.ls.webhooks.list()
+            webhooks_id_to_delete = [
+                webhook.id for webhook in webhooks 
+                if webhook.project == old_label_studio_project_id and \
+                webhook.url == f"{self.check_tasks_url}/{str(project_id)}"
+            ]
+
+            for webhook_id in webhooks_id_to_delete:
+                if webhook_id is not None:
+                    self.ls.webhooks.delete(id=webhook_id)
+
             self.ls.webhooks.create(
                 project=project.id,
                 url=f"{self.check_tasks_url}/{str(project_id)}",
