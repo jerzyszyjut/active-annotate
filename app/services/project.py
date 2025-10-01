@@ -1,5 +1,6 @@
 import random
 import logging
+from pathlib import Path
 
 from app.services.annotation_tool_client import AnnotationToolClientService
 from app.services.active_learning_client import ActiveLearningClientService
@@ -22,6 +23,7 @@ class ProjectService:
         self.annotation_service = annotation_service_config
         self.project = project
         self.created_project_id = None
+        self.running = False
 
     def create_project_with_initial_batch(self) -> int:
         """Create a new Label Studio project and upload the first batch of images.
@@ -76,11 +78,14 @@ class ProjectService:
             self.create_project_with_initial_batch()
         else:
             await self.start_next_epoch()
+        self.running = True
 
     async def start_next_epoch(self):
         """Start the next epoch by creating a new project with the next batch."""
         self.project.epoch += 1
-        await self.select_batch()
+        finished = await self.select_batch()
+        if finished:
+            self.finish_active_learning()
 
     async def select_batch(self):
         """Select and upload the next batch of images to a new project."""
@@ -92,11 +97,16 @@ class ProjectService:
 
             root_image_path = self.storage.get_root_path()
             self.project.annotated_image_paths += [
-                root_image_path / task.data["filename"] for task in tasks
+                str(root_image_path / task.data["filename"]) for task in tasks
             ]
+            logger.info(f"Annotated images: {self.project.annotated_image_paths}")
+
             image_paths = self.storage.get_image_paths()
 
-            non_annotated_image_paths = [path for path in image_paths if path not in self.project.annotated_image_paths]
+            non_annotated_image_paths = [Path(path) for path in image_paths if str(path) not in self.project.annotated_image_paths]
+
+            if len(non_annotated_image_paths) == 0:
+                return True
 
             if not self.project.ml_backend_url:
                 raise Exception("ML Backend not assosiated with project.")
@@ -109,6 +119,7 @@ class ProjectService:
                 predictions=predictions,
                 al_batch=self.project.active_learning_batch_size
             )
+            logger.info(f"Selected images to annotate: {selected_paths}")
 
             project_title = f"{self.project.name}_epoch_{self.project.epoch}"
             project_id = self.annotation_service.create_project_and_upload_images(
@@ -123,9 +134,23 @@ class ProjectService:
                 f"Created epoch {self.project.epoch} project with {len(selected_paths)} images"
             )
 
+            return False
+
         except Exception as e:
             logger.error(f"Failed to select batch for epoch {self.project.epoch}: {e}")
             raise Exception(f"Batch selection failed: {e}")
+        
+    def finish_active_learning(self):
+        try:
+            self.annotation_service.delete_webhooks(self.project.id)
+            self.created_project_id = 0
+            self.project.annotated_image_paths = []
+            self.project.epoch = 0
+            self.running = False
+            logger.info("Active learning loop has finished successfully.")
+        except Exception as e:
+            logger.error(f"Failed to finish active learning loop: {e}")
+            raise Exception(f"Finishing project active learning loop: {e}")
 
     def get_project_info(self) -> dict:
         """Get information about the current project.

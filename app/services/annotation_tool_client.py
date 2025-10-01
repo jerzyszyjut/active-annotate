@@ -49,19 +49,14 @@ class AnnotationToolClientService:
             if image_paths:
                 self._upload_local_images(project.id, image_paths)
 
+            logger.warning(self.ml_url)
+            logger.warning(project.id)
+
+            logger.info(self.ls.ml.list(project=project.id))
             self.ls.ml.create(project=project.id, url=self.ml_url, is_interactive=True)
-
+            
             # Delete old webhooks and create new one
-            webhooks = self.ls.webhooks.list()
-            webhooks_id_to_delete = [
-                webhook.id for webhook in webhooks 
-                if webhook.project == old_label_studio_project_id and \
-                webhook.url == f"{self.check_tasks_url}/{str(project_id)}"
-            ]
-
-            for webhook_id in webhooks_id_to_delete:
-                if webhook_id is not None:
-                    self.ls.webhooks.delete(id=webhook_id)
+            self.delete_webhooks(project_id, old_label_studio_project_id)
 
             self.ls.webhooks.create(
                 project=project.id,
@@ -197,3 +192,17 @@ class AnnotationToolClientService:
                 f"Failed to export annotations from project {target_project_id}: {e}"
             )
             raise Exception(f"Failed to export annotations: {e}")
+
+    def delete_webhooks(self, project_id, ls_project_id=None):
+        ls_project_id = self.label_studio_project_id if ls_project_id is None else ls_project_id
+
+        webhooks = self.ls.webhooks.list()
+        webhooks_id_to_delete = [
+            webhook.id for webhook in webhooks 
+            if webhook.project == ls_project_id and \
+            webhook.url == f"{self.check_tasks_url}/{str(project_id)}"
+        ]
+
+        for webhook_id in webhooks_id_to_delete:
+            if webhook_id is not None:
+                self.ls.webhooks.delete(id=webhook_id)

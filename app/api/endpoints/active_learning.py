@@ -236,14 +236,26 @@ async def check_tasks(
 
         # Update project epoch
         await project_crud.update_project(
-            db_project.id, ProjectUpdate(epoch=project.project.epoch), session
+            db_project.id,
+            ProjectUpdate(
+                epoch=project.project.epoch,
+                annotated_image_paths=project.project.annotated_image_paths
+            ),
+            session
         )
 
-        return CheckTasksResponse(
-            message="Training completed and next epoch started successfully",
-            project_id=project.created_project_id,
-            epoch=project.project.epoch,
-        )
+        if project.running:
+            return CheckTasksResponse(
+                message="Training completed and next epoch started successfully",
+                project_id=project.created_project_id,
+                epoch=project.project.epoch,
+            )
+        else:
+            return CheckTasksResponse(
+                message="Active learning loop completed successfully. Project object might be used to another project.",
+                project_id=0,
+                epoch=0
+            )
 
     except HTTPException as e:
         logger.error(f"Database lookup failed: {e.detail}")
