@@ -1,6 +1,7 @@
 import logging
 import os
 import tempfile
+from operator import itemgetter
 import zipfile
 import datetime
 from io import BytesIO
@@ -213,7 +214,8 @@ async def predict(file: UploadFile):
             )
 
         try:
-            predicted_class, confidence = MODEL.predict(image)
+            results = MODEL.predict(image)
+            predicted_class, confidence = max(results, key=itemgetter(1))
             logger.info(
                 f"Prediction successful: {predicted_class} (confidence: {confidence:.3f})"
             )
@@ -228,8 +230,8 @@ async def predict(file: UploadFile):
 
         return JSONResponse(
             {
-                "predicted_class": predicted_class,
-                "confidence": confidence,
+                "classes": [_class for _class, _ in results],
+                "confidences": [confidence for _, confidence in results],
                 "filename": file.filename,
                 "model_version": model_version,
             }
