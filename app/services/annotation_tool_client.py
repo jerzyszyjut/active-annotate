@@ -49,12 +49,8 @@ class AnnotationToolClientService:
             if image_paths:
                 self._upload_local_images(project.id, image_paths)
 
-            logger.warning(self.ml_url)
-            logger.warning(project.id)
-
-            logger.info(self.ls.ml.list(project=project.id))
             self.ls.ml.create(project=project.id, url=self.ml_url, is_interactive=True)
-            
+
             # Delete old webhooks and create new one
             self.delete_webhooks(project_id, old_label_studio_project_id)
 

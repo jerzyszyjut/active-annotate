@@ -8,6 +8,7 @@ import base64
 import logging
 import xml.etree.ElementTree as ET
 from io import BytesIO
+from operator import itemgetter
 from pathlib import Path
 from typing import List, Optional, Tuple, Dict, Any
 
@@ -18,8 +19,10 @@ from app.crud.annotation_tool_client import AnnotationToolClientCRUD
 from app.schemas.ml_backend import (
     Task,
     PredictionValue,
+    PredictionValues,
     LSPredictRequest,
     PredictResponse,
+    ALPredictResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -247,8 +250,9 @@ class MLBackendService:
         model_version: Optional[str],
         label_config_info: Dict[str, Any],
     ) -> PredictionValue:
-        predicted_class = ml_prediction.get("predicted_class")
-        confidence = ml_prediction.get("confidence", 0.0)
+        predicted_class_idx = max(enumerate(ml_prediction.get("confidences")), key=itemgetter(1))[0]
+        predicted_class = ml_prediction.get("classes")[predicted_class_idx]
+        confidence = ml_prediction.get("confidences")[predicted_class_idx]
 
         if model_version is None:
             model_version = ml_prediction.get("model_version", "1.0.0")
@@ -286,6 +290,55 @@ class MLBackendService:
 
         return PredictionValue(
             result=[prediction_result], score=confidence, model_version=model_version, filename=ml_prediction["filename"]
+        )
+
+    def _format_prediction_for_active_learning(
+        self,
+        ml_prediction: dict,
+        model_version: Optional[str],
+        label_config_info: Dict[str, Any],
+    ) -> PredictionValues:
+        classes = ml_prediction["classes"]
+        confidences = ml_prediction["confidences"]
+
+        if model_version is None:
+            model_version = ml_prediction.get("model_version", "1.0.0")
+
+        choices = label_config_info.get("choices", [])
+        from_name = label_config_info.get("from_name", "label")
+        to_name = label_config_info.get("to_name", "image")
+        
+        final_classes = []
+        for _class in classes:
+            if _class and choices:
+                if isinstance(_class, str) and _class.startswith(
+                    "class_"
+                ):
+                    try:
+                        class_index = int(_class.split("_")[1])
+                        if 0 <= class_index < len(choices):
+                            old_class_name = _class
+                            _class = choices[class_index]
+                            logger.info(
+                                f"  Mapped {old_class_name} to choice: {_class}"
+                            )
+                    except (ValueError, IndexError):
+                        logger.warning(
+                            f"Could not parse class index from: {_class}"
+                        )
+                else:
+                    logger.info(f"  Using direct choice match: {_class}")
+            final_classes.append(_class)
+
+        prediction_result = {
+            "value": {"choices": [final_classes]},
+            "from_name": from_name,
+            "to_name": to_name,
+            "type": "choices",
+        }
+
+        return PredictionValues(
+            result=prediction_result, scores=confidences, model_version=model_version, filename=ml_prediction["filename"]
         )
 
     async def health_check(self) -> dict:
@@ -363,9 +416,8 @@ class MLBackendService:
         image_path: Path,
         model_version: Optional[str],
         label_config_info: Dict[str, Any],
-    ) -> List[PredictionValue]:
-        task_predictions = []
-
+    ) -> PredictionValues:
+        formatted_prediction = PredictionValues(result={}, scores=[], filename="")
         try:
             with open(image_path, "rb") as f:
                 image = f.read()
@@ -375,23 +427,27 @@ class MLBackendService:
                 image_bytes, "", str(image_path)
             )
 
-            if prediction_result:
-                formatted_prediction = self._format_prediction_for_label_studio(
-                    prediction_result, model_version, label_config_info
-                )
-                task_predictions.append(formatted_prediction)
+            if not prediction_result:
+                raise Exception(f"Failed processing {image_path} image")
+            
+            formatted_prediction = self._format_prediction_for_active_learning(
+                prediction_result, model_version, label_config_info
+            )
 
+            if not formatted_prediction:
+                raise Exception(f"Failed processing {image_path} image")
+        
         except Exception as e:
             logger.error(f"Error processing {image_path} image")
 
-        return task_predictions
+        return formatted_prediction
 
     async def predict(
         self,
         image_paths: list[Path],
         label_config: Optional[str],
         model_version: Optional[str],
-    ) -> PredictResponse:
+    ) -> ALPredictResponse:
         label_config_info = self._parse_label_config(label_config)
 
         results = []
@@ -402,4 +458,4 @@ class MLBackendService:
             )
             results.append(task_predictions)
 
-        return PredictResponse(results=results)
+        return ALPredictResponse(results=results)

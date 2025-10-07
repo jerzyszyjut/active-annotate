@@ -215,7 +215,7 @@ async def predict(file: UploadFile):
 
         try:
             results = MODEL.predict(image)
-            predicted_class, confidence = max(results, key=itemgetter(1))
+            predicted_class, confidence = max(results[0], key=itemgetter(1))
             logger.info(
                 f"Prediction successful: {predicted_class} (confidence: {confidence:.3f})"
             )
@@ -230,8 +230,8 @@ async def predict(file: UploadFile):
 
         return JSONResponse(
             {
-                "classes": [_class for _class, _ in results],
-                "confidences": [confidence for _, confidence in results],
+                "classes": [_class for _class, _ in results[0]],
+                "confidences": [confidence.item() for _, confidence in results[0]],
                 "filename": file.filename,
                 "model_version": model_version,
             }

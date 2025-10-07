@@ -83,7 +83,10 @@ class ProjectService:
     async def start_next_epoch(self):
         """Start the next epoch by creating a new project with the next batch."""
         self.project.epoch += 1
-        finished = await self.select_batch()
+        if self.project.epoch >= self.project.max_epochs:
+            finished = True
+        else:
+            finished = await self.select_batch()
         if finished:
             self.finish_active_learning()
 
@@ -114,7 +117,7 @@ class ProjectService:
             ml_backend = MLBackendService(self.project.ml_backend_url)
             predictions = await ml_backend.predict(non_annotated_image_paths, self.project.label_config, None)
             
-            active_learning_client = ActiveLearningClientService()
+            active_learning_client = ActiveLearningClientService(self.project.method)
             selected_paths = active_learning_client.select_images(
                 predictions=predictions,
                 al_batch=self.project.active_learning_batch_size
