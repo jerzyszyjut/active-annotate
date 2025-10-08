@@ -174,55 +174,62 @@ async def check_tasks(
             label_studio_project_id=db_at_client.ls_project_id
         )
 
-        # # Convert annotations to training dataset
-        # logger.info("Converting annotations to training dataset")
-        # dataset_converter = DatasetConverterService()
-        # training_dataset = (
-        #     dataset_converter.convert_ls_annotations_to_training_dataset(
-        #         annotations_data, db_storage.path
-        #     )
-        # )
+        # Convert annotations to training dataset
+        logger.info("Converting annotations to training dataset")
+        dataset_converter = DatasetConverterService()
+        training_dataset = (
+            dataset_converter.convert_ls_annotations_to_training_dataset(
+                annotations_data, db_storage.path
+            )
+        )
         
-        # # Trigger ML backend training
-        # logger.info("Starting ML backend training")
-        # ml_backend = MLBackendService(ml_url)
-        # training_response = await ml_backend.train_model(training_dataset)
-        # logger.info(f"Training initiated: {training_response}")
+        if not db_project.ml_backend_url:
+            raise HTTPException(
+                status_code=400,
+                detail="Project missing ml backend configuration",
+            )
+
+        # Trigger ML backend training
+        logger.info("Starting ML backend training")
+        ml_backend = MLBackendService(db_project.ml_backend_url)
+        training_response = await ml_backend.train_model(training_dataset)
+        logger.info(f"Training initiated: {training_response}")
         
-        # # Wait for training to complete
-        # logger.info("Waiting for training to complete...")
-        # training_complete = False
-        # max_wait_time = 3600  # 1 hour maximum wait
-        # check_interval = 30  # Check every 30 seconds
-        # waited_time = 0
+        # Wait for training to complete
+        logger.info("Waiting for training to complete...")
+        training_complete = False
+        max_wait_time = 3600  # 1 hour maximum wait
+        check_interval = 30  # Check every 30 seconds
+        waited_time = 0
 
-        # while not training_complete and waited_time < max_wait_time:
-        #     await asyncio.sleep(check_interval)
-        #     waited_time += check_interval
+        while not training_complete and waited_time < max_wait_time:
+            await asyncio.sleep(check_interval)
+            waited_time += check_interval
 
-        #     try:
-        #         status_response = await ml_backend.get_training_status()
-        #         is_training = status_response.get("is_training", True)
+            try:
+                status_response = await ml_backend.get_training_status()
+                is_training = status_response.get("is_training", True)
 
-        #         if not is_training:
-        #             training_complete = True
-        #             logger.info("Training completed successfully")
-        #         else:
-        #             logger.info(
-        #                 f"Training still in progress... (waited {waited_time}s)"
-        #             )
+                if not is_training:
+                    training_complete = True
+                    logger.info("Training completed successfully")
+                else:
+                    logger.info(
+                        f"Training still in progress... (waited {waited_time}s)"
+                    )
 
-        #     except Exception as e:
-        #         logger.warning(f"Failed to check training status: {e}")
+            except Exception as e:
+                logger.warning(f"Failed to check training status: {e}")
 
-        # if not training_complete:
-        #     raise HTTPException(
-        #         status_code=408,
-        #         detail="Training did not complete within the expected time",
-        #     )
+        if not training_complete:
+            raise HTTPException(
+                status_code=408,
+                detail="Training did not complete within the expected time",
+            )
         
-        #  # Now start next epoch which creates a new project
-        # logger.info("Training complete, starting next epoch")
+         # Now start next epoch which creates a new project
+        logger.info("Training complete, starting next epoch")
+        
         project = ProjectService(storage, annotation_tool_client, db_project)
 
         await project.start_next_epoch()
