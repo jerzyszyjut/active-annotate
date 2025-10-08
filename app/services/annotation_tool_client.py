@@ -17,10 +17,12 @@ class AnnotationToolClientService:
         api_key: str,
         ml_url: str,
         label_studio_project_id: Optional[int] = None,
+        old_ls_projects_id: list[int] = []
     ):
         self.ip_address = ip_address
         self.port = port
         self.label_studio_project_id = label_studio_project_id
+        self.old_ls_projects_id = old_ls_projects_id
         self.api_key = api_key
         self.ml_url = ml_url
         self.base_url = f"http://{self.ip_address}:{self.port}"
@@ -45,6 +47,9 @@ class AnnotationToolClientService:
             logger.info(f"Created Label Studio project '{title}' with ID: {project.id}")
             old_label_studio_project_id = self.label_studio_project_id
             self.label_studio_project_id = project.id
+            
+            if old_label_studio_project_id is not None:     
+                self.old_ls_projects_id.append(old_label_studio_project_id)
 
             if image_paths:
                 self._upload_local_images(project.id, image_paths)

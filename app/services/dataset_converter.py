@@ -22,7 +22,7 @@ class DatasetConverterService:
         pass
 
     def convert_ls_annotations_to_training_dataset(
-        self, annotations_data: bytes, storage_path: str
+        self, all_annotations_data: list[bytes], storage_path: str
     ) -> bytes:
         """Convert Label Studio annotations to a training dataset ZIP file.
 
@@ -35,7 +35,11 @@ class DatasetConverterService:
         """
         try:
             # Parse the annotations JSON
-            annotations_json = json.loads(annotations_data.decode("utf-8"))
+            annotations_json = []
+            for annotations_data in all_annotations_data:
+                json_data = json.loads(annotations_data.decode("utf-8"))
+                annotations_json += json_data
+            
             logger.info(
                 f"Loaded {len(annotations_json)} annotations for training dataset"
             )

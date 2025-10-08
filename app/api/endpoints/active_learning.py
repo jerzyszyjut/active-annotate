@@ -164,15 +164,22 @@ async def check_tasks(
             api_key=db_at_client.api_key,
             label_studio_project_id=db_at_client.ls_project_id,
             ml_url=ml_url,
+            old_ls_projects_id=db_at_client.old_ls_projects_id
         )
 
-        # Export annotations from the current project
+        # Export annotations from all annotated projects
+        all_annotated_projects_id = db_at_client.old_ls_projects_id.copy()
+        all_annotated_projects_id.append(db_at_client.ls_project_id)
+
+        annotations_data = [
+            annotation_tool_client.export_annotations(label_studio_project_id=project_id)
+            for project_id in all_annotated_projects_id
+        ]
+
         logger.info(
-            f"Exporting annotations from project {db_at_client.ls_project_id}"
+            f"Exporting annotations from projects {all_annotated_projects_id}"
         )
-        annotations_data = annotation_tool_client.export_annotations(
-            label_studio_project_id=db_at_client.ls_project_id
-        )
+
 
         # Convert annotations to training dataset
         logger.info("Converting annotations to training dataset")
@@ -237,7 +244,10 @@ async def check_tasks(
         # Update the annotation tool client with the new project ID
         await at_client_crud.update_annotation_tool_client(
             db_at_client.id,
-            AnnotationToolClientUpdate(ls_project_id=project.created_project_id),
+            AnnotationToolClientUpdate(
+                ls_project_id=project.created_project_id,
+                old_ls_projects_id=annotation_tool_client.old_ls_projects_id
+            ),
             session,
         )
 

@@ -2,7 +2,7 @@ from __future__ import annotations
 from datetime import datetime, UTC
 from typing import Optional
 from sqlmodel import SQLModel, Field, UniqueConstraint
-from sqlalchemy import Column, DateTime, func
+from sqlalchemy import ARRAY, Column, DateTime, func, Integer
 
 
 class AnnotationToolClient(SQLModel, table=True):
@@ -17,6 +17,9 @@ class AnnotationToolClient(SQLModel, table=True):
         default=None, sa_column=Column(DateTime(timezone=True), onupdate=func.now())
     )
     ip_address: str = Field(max_length=200)
+    old_ls_projects_id: Optional[list[str]] = Field(
+        sa_column=Column(ARRAY(Integer), default_factory=list, nullable=False, server_default="{}")
+    )
     port: int = Field()
     ls_project_id: Optional[int] = Field(default=None)
     api_key: str = Field(max_length=1000)
