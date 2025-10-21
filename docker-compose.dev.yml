@@ -20,7 +20,7 @@ services:
     networks:
       - active-annotate-dev-network
 
-  api-dev:
+  api-dev.local:
     build:
       context: .
       dockerfile: Dockerfile
@@ -39,6 +39,7 @@ services:
       - ./data:/data
     ports:
       - "8000:8000"
+      - "5678:5678"
     depends_on:
       postgres:
         condition: service_healthy

@@ -4,6 +4,7 @@ from typing import Sequence, Optional, Dict, Any
 import logging
 import base64
 import mimetypes
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -15,63 +16,73 @@ class AnnotationToolClientService:
         port: int,
         api_key: str,
         ml_url: str,
-        project_id: Optional[int] = None,
+        label_studio_project_id: Optional[int] = None,
+        old_ls_projects_id: list[int] = []
     ):
         self.ip_address = ip_address
         self.port = port
-        self.project_id = project_id
+        self.label_studio_project_id = label_studio_project_id
+        self.old_ls_projects_id = old_ls_projects_id
         self.api_key = api_key
         self.ml_url = ml_url
         self.base_url = f"http://{self.ip_address}:{self.port}"
+        self.check_tasks_url = (
+            f"{settings.ACTIVE_ANNOTATE_HOSTNAME}active-learning/check-tasks"
+        )
         self.ls = LabelStudio(base_url=self.base_url, api_key=api_key)
 
     def create_project_and_upload_images(
-        self, title: str, label_config: str, image_paths: Sequence[Path]
+        self,
+        title: str,
+        project_id: int,
+        label_config: str,
+        image_paths: Sequence[Path],
     ) -> int:
-        """Create a new Label Studio project and upload local images to it.
-
-        Args:
-            title: Project title
-            label_config: Label configuration XML
-            image_paths: List of local image file paths
-
-        Returns:
-            Created project ID
-
-        Raises:
-            Exception: If project creation or image upload fails
-        """
         try:
-            # Create new project
             project = self.ls.projects.create(title=title, label_config=label_config)
 
             if not project or not hasattr(project, "id") or project.id is None:
                 raise Exception("Failed to create Label Studio project")
 
             logger.info(f"Created Label Studio project '{title}' with ID: {project.id}")
-            self.project_id = project.id
+            old_label_studio_project_id = self.label_studio_project_id
+            self.label_studio_project_id = project.id
+            
+            if old_label_studio_project_id is not None:     
+                self.old_ls_projects_id.append(old_label_studio_project_id)
 
-            # Upload images to the project
             if image_paths:
                 self._upload_local_images(project.id, image_paths)
 
             self.ls.ml.create(project=project.id, url=self.ml_url, is_interactive=True)
 
+            # Delete old webhooks and create new one
+            self.delete_webhooks(project_id, old_label_studio_project_id)
+
+            self.ls.webhooks.create(
+                project=project.id,
+                url=f"{self.check_tasks_url}/{str(project_id)}",
+                actions=[
+                    "ANNOTATION_CREATED",
+                    "ANNOTATION_UPDATED",
+                ]
+            )
+
             return project.id
 
         except Exception as e:
-            if self.project_id:
-                self.ls.projects.delete(self.project_id)
+            if self.label_studio_project_id:
+                self.ls.projects.delete(self.label_studio_project_id)
             logger.error(f"Failed to create project and upload images: {e}")
             raise Exception(f"Failed to create Label Studio project: {e}")
 
     def _upload_local_images(
-        self, project_id: int, image_paths: Sequence[Path]
+        self, label_studio_project_id: int, image_paths: Sequence[Path]
     ) -> None:
         """Upload local image files to a Label Studio project.
 
         Args:
-            project_id: Label Studio project ID
+            label_studio_project_id: Label Studio project ID
             image_paths: List of local image file paths
         """
         try:
@@ -107,20 +118,20 @@ class AnnotationToolClientService:
                     continue
 
             if tasks:
-                self.ls.projects.import_tasks(id=project_id, request=tasks)
+                self.ls.projects.import_tasks(id=label_studio_project_id, request=tasks)
                 logger.info(
-                    f"Successfully uploaded {len(tasks)} images to project {project_id}"
+                    f"Successfully uploaded {len(tasks)} images to project {label_studio_project_id}"
                 )
             else:
                 logger.warning("No valid images found to upload")
 
         except Exception as e:
-            logger.error(f"Failed to upload images to project {project_id}: {e}")
+            logger.error(
+                f"Failed to upload images to project {label_studio_project_id}: {e}"
+            )
             raise Exception(f"Failed to upload images: {e}")
 
-    def get_project_tasks(
-        self, project_id: Optional[int] = None
-    ) -> list[Dict[str, Any]]:
+    def get_project_tasks(self) -> list[Dict[str, Any]]:
         """Get all tasks from a Label Studio project.
 
         Args:
@@ -129,16 +140,70 @@ class AnnotationToolClientService:
         Returns:
             List of task dictionaries
         """
-        target_project_id = project_id or self.project_id
+        if self.label_studio_project_id is None:
+            raise Exception("No project ID specified")
+
+        try:
+            tasks = list(self.ls.tasks.list(project=self.label_studio_project_id))
+            logger.info(
+                f"Retrieved {len(tasks)} tasks from project {self.label_studio_project_id}"
+            )
+            return tasks
+        except Exception as e:
+            logger.error(f"Failed to get tasks from project {self.label_studio_project_id}: {e}")
+            raise Exception(f"Failed to get project tasks: {e}")
+
+    def export_annotations(
+        self, label_studio_project_id: Optional[int] = None, export_format: str = "JSON"
+    ) -> bytes:
+        """Export annotations from a Label Studio project.
+
+        Args:
+            project_id: Project ID (uses instance project_id if not provided)
+            export_format: Export format (JSON, COCO, etc.)
+
+        Returns:
+            Exported data as bytes
+        """
+        target_project_id = label_studio_project_id or self.label_studio_project_id
         if target_project_id is None:
             raise Exception("No project ID specified")
 
         try:
-            tasks = list(self.ls.tasks.list(project=target_project_id))
-            logger.info(
-                f"Retrieved {len(tasks)} tasks from project {target_project_id}"
+            # Use the Label Studio SDK to export annotations
+            # First create an export
+            export_request = self.ls.projects.exports.create(
+                project_id=target_project_id
             )
-            return tasks
+
+            # Wait for export to complete and download
+            export_data_iterator = self.ls.projects.exports.download(
+                project_id=target_project_id, export_pk=str(export_request.id)
+            )
+
+            # Convert iterator to bytes
+            export_data = b"".join(export_data_iterator)
+
+            logger.info(
+                f"Successfully exported annotations from project {target_project_id} in {export_format} format"
+            )
+            return export_data
         except Exception as e:
-            logger.error(f"Failed to get tasks from project {target_project_id}: {e}")
-            raise Exception(f"Failed to get project tasks: {e}")
+            logger.error(
+                f"Failed to export annotations from project {target_project_id}: {e}"
+            )
+            raise Exception(f"Failed to export annotations: {e}")
+
+    def delete_webhooks(self, project_id, ls_project_id=None):
+        ls_project_id = self.label_studio_project_id if ls_project_id is None else ls_project_id
+
+        webhooks = self.ls.webhooks.list()
+        webhooks_id_to_delete = [
+            webhook.id for webhook in webhooks 
+            if webhook.project == ls_project_id and \
+            webhook.url == f"{self.check_tasks_url}/{str(project_id)}"
+        ]
+
+        for webhook_id in webhooks_id_to_delete:
+            if webhook_id is not None:
+                self.ls.webhooks.delete(id=webhook_id)

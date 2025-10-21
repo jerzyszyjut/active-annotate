@@ -52,7 +52,7 @@ logs:
 	docker compose -f docker-compose.dev.yml logs -f
 
 logs-api:
-	docker compose -f docker-compose.dev.yml logs -f api-dev
+	docker compose -f docker-compose.dev.yml logs -f api-dev.local
 
 logs-db:
 	docker compose -f docker-compose.dev.yml logs -f postgres
@@ -65,7 +65,7 @@ logs-ls:
 
 # Open shell in API container
 shell:
-	docker compose -f docker-compose.dev.yml exec api-dev /bin/bash
+	docker compose -f docker-compose.dev.yml exec api-dev.local /bin/bash
 
 # Open shell in database container
 shell-db:
@@ -79,19 +79,19 @@ shell-ls:
 
 # Run tests
 test:
-	docker compose -f docker-compose.dev.yml exec api-dev pytest
+	docker compose -f docker-compose.dev.yml exec api-dev.local pytest
 
 # Run tests with coverage
 test-cov:
-	docker compose -f docker-compose.dev.yml exec api-dev pytest --cov=app --cov-report=xml --cov-report=term-missing --cov-report=html
+	docker compose -f docker-compose.dev.yml exec api-dev.local pytest --cov=app --cov-report=xml --cov-report=term-missing --cov-report=html
 
 # Run database migrations
 migrate:
-	docker compose -f docker-compose.dev.yml exec api-dev alembic upgrade head
+	docker compose -f docker-compose.dev.yml exec api-dev.local alembic upgrade head
 
 # Generate new migration
 migration:
-	docker compose -f docker-compose.dev.yml exec api-dev alembic revision --autogenerate -m "$(MSG)"
+	docker compose -f docker-compose.dev.yml exec api-dev.local alembic revision --autogenerate -m "$(MSG)"
 
 # Clean up everything
 clean:
@@ -112,15 +112,15 @@ install:
 
 # Format code
 format:
-	docker compose -f docker-compose.dev.yml exec api-dev ruff format .
+	docker compose -f docker-compose.dev.yml exec api-dev.local ruff format .
 
 # Lint code
 lint:
-	docker compose -f docker-compose.dev.yml exec api-dev ruff check .
+	docker compose -f docker-compose.dev.yml exec api-dev.local ruff check .
 
 # Check types
 typecheck:
-	docker compose -f docker-compose.dev.yml exec api-dev pyright
+	docker compose -f docker-compose.dev.yml exec api-dev.local pyright
 
 # Open pgAdmin in browser
 pgadmin:

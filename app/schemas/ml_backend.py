@@ -29,7 +29,17 @@ class PredictionValue(BaseModel):
     neighbors: Optional[Dict[str, Any]] = None
     mislabeling: Optional[float] = None
     model_version: Optional[str] = None
+    filename: Optional[str] = None
 
+class PredictionValues(BaseModel):
+    """Represents a classification predictions with confidences."""
+
+    id: Optional[str] = None
+    created_ago: Optional[str] = None
+    result: Dict[str, Any]
+    scores: List[float]
+    model_version: Optional[str] = None
+    filename: str
 
 class LSPredictRequest(BaseModel):
     """Request model for /predict endpoint."""
@@ -45,6 +55,11 @@ class PredictResponse(BaseModel):
     """Response model for /predict endpoint."""
 
     results: List[List[PredictionValue]]
+
+class ALPredictResponse(BaseModel):
+    """Model for predictions to active learning."""
+
+    results: List[PredictionValues]
 
 
 class LSSetupRequest(BaseModel):

@@ -1,6 +1,7 @@
 import logging
 import os
 import tempfile
+from operator import itemgetter
 import zipfile
 import datetime
 from io import BytesIO
@@ -53,11 +54,13 @@ async def train_model_background(zip_content: bytes):
         dataset_dir = extract_zip_to_temp_dir(zip_content)
         logger.info(f"Extracted dataset to: {dataset_dir}")
 
+        # Log directory structure for debugging
         for root, dirs, files in os.walk(dataset_dir):
             logger.info(f"Directory: {root}")
             logger.info(f"  Subdirs: {dirs}")
             logger.info(f"  Files: {files[:10]}")
 
+        # Create transforms for PyTorch ImageFolder dataset
         transform = transforms.Compose(
             [
                 transforms.Resize((224, 224)),
@@ -68,12 +71,15 @@ async def train_model_background(zip_content: bytes):
             ]
         )
 
+        # Load dataset using PyTorch ImageFolder format
+        # Expected structure: dataset_dir/class_name/image_files
         dataset = datasets.ImageFolder(root=dataset_dir, transform=transform)
         logger.info(f"Dataset created with {len(dataset)} samples")
         logger.info(f"Dataset classes: {dataset.classes}")
 
         if len(dataset) == 0:
             logger.error("No training data found in the uploaded ZIP file")
+            logger.error("Expected PyTorch ImageFolder format: class_name/image_files")
             IS_TRAINING = False
             return
 
@@ -119,7 +125,7 @@ async def train_model_background(zip_content: bytes):
         MODEL = model
         logger.info("✅ Global MODEL updated with newly trained model")
 
-        IS_TRAINING = True
+        IS_TRAINING = False
 
         logger.info("🎉 Training completed successfully")
         logger.info(
@@ -208,7 +214,8 @@ async def predict(file: UploadFile):
             )
 
         try:
-            predicted_class, confidence = MODEL.predict(image)
+            results = MODEL.predict(image)
+            predicted_class, confidence = max(results[0], key=itemgetter(1))
             logger.info(
                 f"Prediction successful: {predicted_class} (confidence: {confidence:.3f})"
             )
@@ -223,8 +230,8 @@ async def predict(file: UploadFile):
 
         return JSONResponse(
             {
-                "predicted_class": predicted_class,
-                "confidence": confidence,
+                "classes": [_class for _class, _ in results[0]],
+                "confidences": [confidence.item() for _, confidence in results[0]],
                 "filename": file.filename,
                 "model_version": model_version,
             }
@@ -283,7 +290,7 @@ async def train(
 @app.get("/status")
 async def get_training_progress():
     """Get detailed training progress information."""
-    global TRAINING_STATUS
+    global IS_TRAINING
 
     return JSONResponse(
         {

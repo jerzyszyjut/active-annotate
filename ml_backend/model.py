@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 class BaseImageClassificationModel(ABC):
-    def predict(self, image: Image.Image) -> tuple[str, float]:
+    def predict(self, image: Image.Image) -> list[list[tuple[str, float]]]:
         raise NotImplementedError("Subclasses must implement predict method")
 
     def get_version(self) -> str:
@@ -142,7 +142,7 @@ class ResNetImageClassificationMLModel(
         optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate)
         return optimizer
 
-    def predict(self, image: Image.Image) -> tuple[str, float]:
+    def predict(self, image: Image.Image) -> list[list[tuple[str, float]]]:
         """
         Predict class and confidence for an image.
 
@@ -169,18 +169,14 @@ class ResNetImageClassificationMLModel(
         with torch.no_grad():
             output = self.forward(image_tensor)
             probabilities = torch.softmax(output, dim=1)
-            confidence, predicted_class_idx = torch.max(probabilities, dim=1)
 
-            predicted_class_idx = int(predicted_class_idx.item())
-            confidence_score = float(confidence.item())
+        # Return class name and confidences
+        results = [
+            [(self.class_names[i], prob) for i, prob in enumerate(instance_probabilities)]
+            for instance_probabilities in probabilities
+        ]
 
-        # Return class name and confidence
-        if predicted_class_idx < len(self.class_names):
-            class_name = self.class_names[predicted_class_idx]
-        else:
-            class_name = f"class_{predicted_class_idx}"
-
-        return class_name, confidence_score
+        return results
 
     def get_version(self) -> str:
         return "1.0.0"

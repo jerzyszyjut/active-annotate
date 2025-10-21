@@ -11,6 +11,17 @@ from app.api.routes import api_router
 from app.core.config import settings
 from app.db.database import init_db
 from contextlib import asynccontextmanager
+import logging
+
+
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+
+if settings.DEBUG:
+    import debugpy
+    debugpy.listen(("0.0.0.0", 5678))
+    logging.info("Debbuger listens on port 5678")
 
 
 @asynccontextmanager
