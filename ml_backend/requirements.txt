@@ -1,9 +1,0 @@
---extra-index-url https://download.pytorch.org/whl/cpu
-fastapi
-uvicorn
-python-multipart
-pillow
-torch==2.7.1+cpu
-torchvision==0.22.1+cpu
-pytorch-lightning
-torchmetrics
