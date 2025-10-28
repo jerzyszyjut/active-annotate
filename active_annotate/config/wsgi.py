@@ -24,7 +24,10 @@ from django.core.wsgi import get_wsgi_application
 # active_annotate directory.
 BASE_DIR = Path(__file__).resolve(strict=True).parent.parent
 sys.path.append(str(BASE_DIR / "active_annotate"))
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.production")
+os.environ.setdefault(
+    "DJANGO_SETTINGS_MODULE",
+    "active_annotate.config.settings.production",
+)
 
 # This application object is used by any WSGI server configured to use this
 # file. This includes Django's development server, if the WSGI_APPLICATION
