@@ -1,0 +1,7 @@
+# PostgreSQL
+# ------------------------------------------------------------------------------
+POSTGRES_HOST=postgres
+POSTGRES_PORT=5432
+POSTGRES_DB=active_annotate
+POSTGRES_USER=ZTHEfoNdUIiztvwbhPWPqWWpytWfwfbh
+POSTGRES_PASSWORD=Hm1mhwawdBqqkCznhN1KOl0HCwVvFLzQVtwzN5Nc6h8oWFvmXn0HpOOCQJh0RNjE
