@@ -1,0 +1,2 @@
+class LabelStudioService:
+    pass

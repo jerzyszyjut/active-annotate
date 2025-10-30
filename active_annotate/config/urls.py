@@ -29,6 +29,8 @@ urlpatterns += [
         SpectacularSwaggerView.as_view(url_name="api-schema"),
         name="api-docs",
     ),
+    # Our urls
+    path("api/data/", include("active_annotate.datasets.urls", namespace="datasets")),
 ]
 
 if settings.DEBUG:
