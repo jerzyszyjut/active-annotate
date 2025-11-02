@@ -34,6 +34,7 @@ class ClassificationLabel(Model):
     dataset = ForeignKey(
         ClassificationDataset,
         on_delete=models.CASCADE,
+        related_name="labels",
     )
     class_index = PositiveIntegerField(_("Class ID"))
     class_label = CharField(_("Class Label"), max_length=255)
@@ -52,10 +53,12 @@ class ClassificationDatapoint(Datapoint):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
+        related_name="datapoints",
     )
     dataset = ForeignKey(
         ClassificationDataset,
         on_delete=models.CASCADE,
+        related_name="datapoints",
     )
 
     def __str__(self):
@@ -66,12 +69,14 @@ class ClassificationPrediction(Datapoint):
     datapoint = ForeignKey(
         ClassificationDatapoint,
         on_delete=models.CASCADE,
+        related_name="predictions",
     )
     predicted_label = ForeignKey(
         ClassificationLabel,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
+        related_name="predictions",
     )
     confidence = models.FloatField(_("Confidence"), null=True, blank=True)
 
