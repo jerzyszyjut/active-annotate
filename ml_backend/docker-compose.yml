@@ -1,0 +1,10 @@
+services:
+  ml-backend:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./model_weights:/app/model_weights
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
