@@ -9,6 +9,14 @@ from django.utils.translation import gettext_lazy as _
 
 class Dataset(Model):
     name = CharField(_("Name"), max_length=255)
+    label_studio_url = CharField(_("Label Studio URL"), max_length=255)
+    label_studio_api_key = CharField(_("Label Studio API Key"), max_length=255)
+    ml_backend_url = CharField(_("ML Backend URL"), max_length=255)
+    batch_size = PositiveIntegerField(
+        _("Batch Size"),
+        default=16,
+        help_text=_("Number of datapoints to process in each batch."),
+    )
 
     class Meta:
         abstract = True

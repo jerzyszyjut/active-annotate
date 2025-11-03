@@ -23,6 +23,11 @@ services:
     ports:
       - "8000:8000"
     command: /start
+    networks:
+      default:
+        aliases:
+          - django.django
+          - django
 
   postgres:
     build:
@@ -72,45 +77,17 @@ services:
 
   label_studio:
     image: heartexlabs/label-studio:latest
+    container_name: active_annotate_local_label_studio
     ports:
       - "8080:8080"
     volumes:
       - label_studio_data:/label-studio/data
     environment:
       - LABEL_STUDIO_ENABLE_LEGACY_API_TOKEN=true
-
-  yolo_ml_backend:
-    container_name: active_annotate_local_yolo
-    image: humansignal/yolo:v0
-    build:
-      context: ./ml_backend/label_studio_ml/examples/yolo
-      args:
-        TEST_ENV: ${TEST_ENV}
-    environment:
-      # Basic auth for the model server
-      - BASIC_AUTH_USER=
-      - BASIC_AUTH_PASS=
-      # Log level for the model server
-      - LOG_LEVEL=DEBUG
-      # Number of workers and threads
-      - WORKERS=1
-      - THREADS=8
-      # Model and Python paths
-      - MODEL_DIR=/data/models
-      - PYTHONPATH=/app
-      # Label Studio connection
-      - LABEL_STUDIO_HOST=${LABEL_STUDIO_HOST:-http://host.docker.internal:8080}
-      - LABEL_STUDIO_API_KEY=${LABEL_STUDIO_API_KEY}
-      # YOLO parameters
-      - ALLOW_CUSTOM_MODEL_PATH=true
-      - DEBUG_PLOT=false
-      - MODEL_SCORE_THRESHOLD=0.5
-      - MODEL_ROOT=/app/models
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    ports:
-      - "9090:9090"
-    volumes:
-      - ./ml_backend/label_studio_ml/examples/yolo/data/server:/data
-      - ./ml_backend/label_studio_ml/examples/yolo/models:/app/models
-      - ./ml_backend/label_studio_ml/examples/yolo/cache_dir:/app/cache_dir
+      - DJANGO_ALLOWED_HOSTS=*,label_studio,localhost,127.0.0.1,label_studio:8080
+      - LABEL_STUDIO_PORT=8080
+    networks:
+      default:
+        aliases:
+          - label_studio
+          - label-studio

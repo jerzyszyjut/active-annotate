@@ -89,7 +89,6 @@ LOCAL_APPS = [
     "active_annotate.users",
     "active_annotate.integrations",
     "active_annotate.datasets",
-    # Your stuff: custom apps go here
 ]
 # https://docs.djangoproject.com/en/dev/ref/settings/#installed-apps
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
