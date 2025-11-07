@@ -96,7 +96,7 @@ services:
   ml_backend:
     build:
       context: ml_backend
-      dockerfile: ./ml_backend/Dockerfile
+      dockerfile: Dockerfile
     container_name: active_annotate_local_ml_backend
     ports:
       - "9090:9090"

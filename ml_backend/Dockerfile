@@ -7,9 +7,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 RUN pip install --no-cache-dir uv
 
-COPY . .
+COPY pyproject.toml uv.lock ./
 
-RUN uv sync
+RUN UV_HTTP_TIMEOUT=120 uv sync
+
+COPY . .
 
 EXPOSE 9090
 

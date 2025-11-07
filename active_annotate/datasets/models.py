@@ -8,6 +8,7 @@ from django.db.models import OuterRef
 from django.db.models import Subquery
 from django.db.models.fields import CharField
 from django.db.models.fields import PositiveIntegerField
+from django.db.models.functions import Coalesce
 from django.utils.translation import gettext_lazy as _
 
 
@@ -121,6 +122,6 @@ class ClassificationPrediction(Datapoint):
                 model_version=version,
             )
             .values("datapoint")
-            .annotate(latest_conf=Max("confidence"))
+            .annotate(latest_conf=Coalesce(Max("confidence"), 0.0))
             .values("latest_conf"),
         )

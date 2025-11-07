@@ -1,3 +1,4 @@
+import json
 from enum import Enum
 from pathlib import Path
 
@@ -17,12 +18,32 @@ class ModelStatus(str, Enum):
 class ModelManager:
     def __init__(self, save_weights_dir: Path, num_classes: int = 1000):
         self.save_weights_dir = save_weights_dir
+        self.status_file = save_weights_dir / "model_status.json"
+        self._lock = FileLock(str(save_weights_dir / "model.lock"), timeout=3)
+
         self.model = ResNetImageClassificationMLModel(save_weights_dir, num_classes)
-        self.status = ModelStatus.IDLE
-        self.version = 0
-        self._lock = FileLock("concurrent_gunicorn.lock", timeout=3)
         self.class_names: list[str] = []
+
+        self._load_status()
         self._load_latest_weights()
+
+    def _load_status(self) -> None:
+        with self._lock:
+            if self.status_file.exists():
+                data = json.loads(self.status_file.read_text())
+                self.status = ModelStatus(data.get("status", "idle"))
+                self.version = data.get("version", 0)
+            else:
+                self.status = ModelStatus.IDLE
+                self.version = 0
+                self._save_status()
+
+    def _save_status(self) -> None:
+        data = {
+            "status": self.status.value,
+            "version": self.version,
+        }
+        self.status_file.write_text(json.dumps(data))
 
     def _load_latest_weights(self):
         weight_files = sorted(self.save_weights_dir.glob("model_weights_v*.pth"))
@@ -37,17 +58,19 @@ class ModelManager:
             version_str = latest_weight.stem.replace("model_weights_v", "")
             self.version = int(version_str)
 
-    def start_training(self):
+    def start_training(self) -> None:
         with self._lock:
             if self.status == ModelStatus.TRAINING:
                 msg = "Training already in progress"
                 raise RuntimeError(msg)
             self.status = ModelStatus.TRAINING
+            self._save_status()
 
-    def finish_training(self):
+    def finish_training(self) -> None:
         with self._lock:
             self.status = ModelStatus.IDLE
             self.version += 1
+            self._save_status()
 
     def train(
         self,

@@ -115,25 +115,58 @@ async def train(file: UploadFile) -> dict:
             detail="Training already in progress",
         )
 
-    with tempfile.TemporaryDirectory() as temp_dir:
+    temp_dir = tempfile.mkdtemp()
+    try:
         temp_path = Path(temp_dir)
-        zip_path = temp_path / file.filename
+        zip_path = temp_path / "training_data.zip"
 
         data = await file.read()
+        _validate_data_received(data)
         zip_path.write_bytes(data)
+        _validate_zip_written(zip_path)
 
-        shutil.unpack_archive(str(zip_path), str(temp_path))
-        extract_dir = temp_path / file.filename.replace(".zip", "")
-        if not extract_dir.exists():
-            extract_dir = temp_path
+        try:
+            extract_dir = temp_path / "extracted"
+            extract_dir.mkdir(parents=True, exist_ok=True)
+            shutil.unpack_archive(str(zip_path), str(extract_dir))
+        except (OSError, RuntimeError) as e:
+            msg = f"Failed to extract ZIP file: {e!s}"
+            raise HTTPException(
+                status_code=400,
+                detail=msg,
+            ) from e
 
         def train_model() -> None:
-            model_manager.train(extract_dir)
+            try:
+                model_manager.train(extract_dir)
+            finally:
+                shutil.rmtree(temp_dir, ignore_errors=True)
 
         thread = threading.Thread(target=train_model, daemon=True)
         thread.start()
+    except HTTPException:
+        shutil.rmtree(temp_dir, ignore_errors=True)
+        raise
+    else:
+        return {"message": "Training started"}
 
-    return {"message": "Training started"}
+
+def _validate_data_received(data: bytes) -> None:
+    if not data:
+        msg = "Empty file received"
+        raise HTTPException(
+            status_code=400,
+            detail=msg,
+        )
+
+
+def _validate_zip_written(zip_path: Path) -> None:
+    if not zip_path.exists() or zip_path.stat().st_size == 0:
+        msg = "Failed to write ZIP file"
+        raise HTTPException(
+            status_code=400,
+            detail=msg,
+        )
 
 
 @app.get("/status")

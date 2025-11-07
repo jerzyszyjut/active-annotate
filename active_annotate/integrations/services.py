@@ -2,7 +2,7 @@ import base64
 
 import httpx
 from django.db.models.enums import TextChoices
-from django.urls import reverse
+from django.db.models.functions import Coalesce
 from label_studio_sdk import LabelStudio
 from rest_framework.request import Request
 
@@ -34,24 +34,33 @@ class MLBackendService:
             label__isnull=True,
         ).without_predictions_for_version(current_version)
 
+        predictions_to_create = []
         for datapoint in queryset:
             response = self.client.post(
                 "/predict",
-                data={
-                    "upload_file": datapoint.file.read(),
+                files={
+                    "file": datapoint.file.read(),
                 },
             ).json()
 
-            for prediction in response.get("predictions", []):
-                ClassificationPrediction.objects.create(
-                    datapoint=datapoint,
-                    predicted_label=ClassificationLabel.objects.filter(
+            predictions_list = response.get("predictions", [])
+            if predictions_list:
+                for prediction in predictions_list[0]:
+                    predicted_label = ClassificationLabel.objects.filter(
                         dataset=self.dataset,
                         class_index=prediction["idx"],
-                    ).first(),
-                    confidence=prediction.get("confidence"),
-                    model_version=response.get("version"),
-                )
+                    ).first()
+                    predictions_to_create.append(
+                        ClassificationPrediction(
+                            datapoint=datapoint,
+                            predicted_label=predicted_label,
+                            confidence=prediction.get("confidence"),
+                            model_version=response.get("version"),
+                        ),
+                    )
+
+        if predictions_to_create:
+            ClassificationPrediction.objects.bulk_create(predictions_to_create)
 
 
 class ActiveLearningService:
@@ -68,13 +77,15 @@ class ActiveLearningService:
             ),
         )
 
-        points_ranked_by_uncertainty = queryset.order_by("latest_prediction_confidence")
+        points_ranked_by_uncertainty = queryset.order_by(
+            Coalesce("latest_prediction_confidence", 0.0),
+        )
 
         return points_ranked_by_uncertainty[: self.dataset.batch_size]
 
 
 class LabelStudioService:
-    def __init__(self, dataset: ClassificationDataset, request: Request):
+    def __init__(self, dataset: ClassificationDataset, request: Request = None):
         self.client = LabelStudio(
             base_url=dataset.label_studio_url,
             api_key=dataset.label_studio_api_key,
@@ -99,26 +110,26 @@ class LabelStudioService:
             ),
         )
 
-    def create_project(self):
-        project = None
-        try:
-            project = self.client.projects.create(
-                label_config=self._get_image_classification_label_config(),
-            )
+    def create_active_learning_project(
+        self,
+        webhook_url: str | None = None,
+        dataset_pk: int | None = None,
+    ):
+        project = self.client.projects.create(
+            label_config=self._get_image_classification_label_config(),
+        )
+
+        if webhook_url and dataset_pk:
             self.client.webhooks.create(
-                url=self.request.build_absolute_uri(
-                    reverse("integrations:label-studio-annotations-webhook"),
-                ),
+                url=webhook_url,
                 project=project.id,
                 actions=WebhookAnnotationActionTypes.values,
                 send_payload=True,
-                headers={"project_pk": str(self.dataset.pk)},
+                send_for_all_actions=False,
+                headers={"project_pk": str(dataset_pk)},
             )
-            self.import_datapoints(project.id)
-        except Exception:
-            if project:
-                self.client.projects.delete(project.id)
-            raise
+
+        self.import_datapoints(project.id)
         return project
 
     def import_datapoints(self, project_id: int):
@@ -132,28 +143,42 @@ class LabelStudioService:
             file_content = datapoint.file.read()
             base64_encoded = base64.b64encode(file_content).decode("utf-8")
 
-            latest_prediction = datapoint.predictions.filter(
-                model_version=current_version,
-            ).latest("id")
-
-            predictions_data = []
-            if latest_prediction:
-                predictions_data = [
-                    {
-                        "value": {
-                            "choices": [latest_prediction.predicted_label.class_label],
-                        },
-                        "from_name": "label",
-                        "to_name": "image",
-                        "type": "choices",
-                    },
-                ]
-
-            self.client.tasks.create(
+            task = self.client.tasks.create(
                 project=project_id,
                 data={
                     "image": f"data:image/jpeg;base64,{base64_encoded}",
                 },
                 inner_id=datapoint.id,
-                predictions=predictions_data,
             )
+
+            latest_prediction = (
+                datapoint.predictions.filter(
+                    model_version=current_version,
+                    predicted_label__isnull=False,
+                )
+                .order_by("-id")
+                .first()
+            )
+
+            if (
+                latest_prediction
+                and latest_prediction.predicted_label
+                and latest_prediction.confidence
+            ):
+                self.client.predictions.create(
+                    task=task.id,
+                    result=[
+                        {
+                            "value": {
+                                "choices": [
+                                    latest_prediction.predicted_label.class_label,
+                                ],
+                            },
+                            "from_name": "label",
+                            "to_name": "image",
+                            "type": "choices",
+                        },
+                    ],
+                    model_version=str(current_version),
+                    score=float(latest_prediction.confidence),
+                )
