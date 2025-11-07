@@ -1,8 +1,9 @@
-import threading
 from enum import Enum
 from pathlib import Path
 
 import pytorch_lightning as pl
+import torch
+from filelock import FileLock
 from model import ResNetImageClassificationMLModel
 from torch.utils.data import DataLoader
 from torchvision import datasets
@@ -15,11 +16,26 @@ class ModelStatus(str, Enum):
 
 class ModelManager:
     def __init__(self, save_weights_dir: Path, num_classes: int = 1000):
+        self.save_weights_dir = save_weights_dir
         self.model = ResNetImageClassificationMLModel(save_weights_dir, num_classes)
         self.status = ModelStatus.IDLE
         self.version = 0
-        self._lock = threading.Lock()
+        self._lock = FileLock("concurrent_gunicorn.lock", timeout=3)
         self.class_names: list[str] = []
+        self._load_latest_weights()
+
+    def _load_latest_weights(self):
+        weight_files = sorted(self.save_weights_dir.glob("model_weights_v*.pth"))
+        if weight_files:
+            latest_weight = weight_files[-1]
+            state_dict = torch.load(
+                latest_weight,
+                weights_only=True,
+                map_location="cpu",
+            )
+            self.model.load_state_dict(state_dict)
+            version_str = latest_weight.stem.replace("model_weights_v", "")
+            self.version = int(version_str)
 
     def start_training(self):
         with self._lock:
@@ -64,7 +80,7 @@ class ModelManager:
                 enable_progress_bar=False,
             )
             trainer.fit(self.model, train_loader, val_loader)
-            self.model.save_weights()
+            self.model.save_weights(self.version + 1)
         finally:
             self.finish_training()
 

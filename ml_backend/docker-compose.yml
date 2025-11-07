@@ -2,7 +2,7 @@ services:
   ml-backend:
     build: .
     ports:
-      - "8000:8000"
+      - "9090:9090"
     volumes:
       - ./model_weights:/app/model_weights
     environment:

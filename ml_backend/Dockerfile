@@ -11,6 +11,6 @@ COPY . .
 
 RUN uv sync
 
-EXPOSE 8000
+EXPOSE 9090
 
-CMD ["uv", "run", "gunicorn", "main:app", "--workers", "4", "--worker-class", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8000"]
+CMD ["uv", "run", "gunicorn", "main:app", "--workers", "4", "--worker-class", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:9090"]

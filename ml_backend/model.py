@@ -1,4 +1,3 @@
-import datetime
 import logging
 from pathlib import Path
 
@@ -63,10 +62,8 @@ class ResNetImageClassificationMLModel(
         self.model.fc = nn.Linear(in_features, new_num_classes)
         self.num_classes = new_num_classes
 
-    def save_weights(self):
-        timestamp = datetime.datetime.now(tz=datetime.UTC).strftime("%Y%m%d_%H%M%S")
-        filepath = self.save_weights_dir / f"model_weights_{timestamp}.pth"
-
+    def save_weights(self, version: int) -> None:
+        filepath = self.save_weights_dir / f"model_weights_v{version}.pth"
         torch.save(self.state_dict(), filepath)
 
     def forward(self, x: Tensor) -> Tensor:

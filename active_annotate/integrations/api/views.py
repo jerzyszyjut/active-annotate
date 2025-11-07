@@ -66,12 +66,3 @@ class LabelStudioIntegrationViewSet(GenericViewSet):
         datapoint.save()
 
         return Response({"status": "webhook received"})
-
-    @action(
-        detail=False,
-        methods=["post"],
-        permission_classes=[AllowAny],
-        url_path="predictions-webhook",
-    )
-    def predictions_webhook(self, request):
-        return Response({"status": "prediction webhook received"})

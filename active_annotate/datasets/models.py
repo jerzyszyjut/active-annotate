@@ -1,7 +1,11 @@
 from django.db import models
+from django.db.models import Exists
 from django.db.models import FileField
 from django.db.models import ForeignKey
+from django.db.models import Max
 from django.db.models import Model
+from django.db.models import OuterRef
+from django.db.models import Subquery
 from django.db.models.fields import CharField
 from django.db.models.fields import PositiveIntegerField
 from django.utils.translation import gettext_lazy as _
@@ -54,6 +58,18 @@ class ClassificationLabel(Model):
         return f"{self.dataset.name} - {self.class_label} (ID: {self.class_index})"
 
 
+class ClassificationDatapointQuerySet(models.QuerySet):
+    def without_predictions_for_version(self, version):
+        predictions_for_dp = ClassificationPrediction.objects.filter(
+            datapoint=OuterRef("pk"),
+            model_version=version,
+        ).values("pk")[:1]
+
+        return self.annotate(has_prediction=Exists(predictions_for_dp)).filter(
+            has_prediction=False,
+        )
+
+
 class ClassificationDatapoint(Datapoint):
     file = FileField(_("File"))
     label = ForeignKey(
@@ -68,6 +84,8 @@ class ClassificationDatapoint(Datapoint):
         on_delete=models.CASCADE,
         related_name="datapoints",
     )
+
+    objects = ClassificationDatapointQuerySet.as_manager()
 
     def __str__(self):
         return f"Datapoint {self.pk} in {self.dataset.name}"
@@ -87,9 +105,22 @@ class ClassificationPrediction(Datapoint):
         related_name="predictions",
     )
     confidence = models.FloatField(_("Confidence"), null=True, blank=True)
+    model_version = PositiveIntegerField(_("Model Version"))
 
     def __str__(self):
         return (
             f"Prediction for Datapoint {self.datapoint.pk} - "
             f"Predicted: {self.predicted_label} (Confidence: {self.confidence})"
+        )
+
+    @staticmethod
+    def latest_confidence_subquery(version):
+        return Subquery(
+            ClassificationPrediction.objects.filter(
+                datapoint=OuterRef("pk"),
+                model_version=version,
+            )
+            .values("datapoint")
+            .annotate(latest_conf=Max("confidence"))
+            .values("latest_conf"),
         )
