@@ -8,9 +8,5 @@ dependencies = [
     "fastapi[standard]>=0.121.0",
     "filelock>=3.20.0",
     "gunicorn>=23.0.0",
-    "lightning>=2.5.5",
     "pillow>=12.0.0",
-    "torch>=2.9.0",
-    "torchmetrics>=1.8.2",
-    "torchvision>=0.24.0",
 ]

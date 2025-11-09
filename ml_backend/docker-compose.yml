@@ -1,10 +1,9 @@
 services:
   ml-backend:
     build: .
+    container_name: active_annotate_local_ml_backend
     ports:
       - "9090:9090"
     volumes:
-      - ./model_weights:/app/model_weights
-    environment:
-      - PYTHONUNBUFFERED=1
+      - ./model_weights:/model_weights
     restart: unless-stopped

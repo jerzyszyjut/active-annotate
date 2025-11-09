@@ -16,8 +16,8 @@ from active_annotate.integrations.api.serializers import (
 from active_annotate.integrations.label_studio_schemas import (
     LabelStudioAnnotationWebhookModel,
 )
-from active_annotate.integrations.tasks import retrain_model_and_create_new_project
 from active_annotate.integrations.tasks import start_active_learning_loop
+from active_annotate.integrations.tasks import step_in_active_learning_loop
 
 
 @extend_schema_view(
@@ -54,7 +54,7 @@ class LabelStudioIntegrationViewSet(GenericViewSet):
         dataset_id = data["dataset_id"]
         ClassificationDataset.objects.get(pk=dataset_id)
 
-        start_active_learning_loop.delay(dataset_id, request.build_absolute_uri())
+        start_active_learning_loop.delay(dataset_id=dataset_id)
 
         return Response({"status": "active learning started"})
 
@@ -75,8 +75,10 @@ class LabelStudioIntegrationViewSet(GenericViewSet):
         datapoint.label = label
         datapoint.save()
 
-        dataset_id = datapoint.dataset.id
-        project_id = data.task.project
-        retrain_model_and_create_new_project.delay(dataset_id, project_id)
+        if data.project.finished_task_number == datapoint.dataset.batch_size:
+            step_in_active_learning_loop.delay(
+                dataset_id=datapoint.dataset.id,
+                project_id=data.project.id,
+            )
 
         return Response({"status": "webhook received"})

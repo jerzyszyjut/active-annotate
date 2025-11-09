@@ -1,11 +1,19 @@
 from django.db import models
+from django.db.models import Case
+from django.db.models import Count
 from django.db.models import Exists
+from django.db.models import ExpressionWrapper
+from django.db.models import F
 from django.db.models import FileField
+from django.db.models import FloatField
 from django.db.models import ForeignKey
 from django.db.models import Max
+from django.db.models import Min
 from django.db.models import Model
 from django.db.models import OuterRef
 from django.db.models import Subquery
+from django.db.models import Value
+from django.db.models import When
 from django.db.models.fields import CharField
 from django.db.models.fields import PositiveIntegerField
 from django.db.models.functions import Coalesce
@@ -122,6 +130,19 @@ class ClassificationPrediction(Datapoint):
                 model_version=version,
             )
             .values("datapoint")
-            .annotate(latest_conf=Coalesce(Max("confidence"), 0.0))
-            .values("latest_conf"),
+            .annotate(
+                num_preds=Coalesce(Count("pk"), 0),
+                max_conf=Coalesce(Max("confidence"), 0.0),
+                min_conf=Coalesce(Min("confidence"), 0.0),
+            )
+            .annotate(
+                closeness=Case(
+                    When(num_preds__lt=2, then=Value(0.0)),
+                    default=ExpressionWrapper(
+                        Value(1.0) - (F("max_conf") - F("min_conf")),
+                        output_field=FloatField(),
+                    ),
+                ),
+            )
+            .values("closeness"),
         )

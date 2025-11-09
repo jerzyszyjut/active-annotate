@@ -1,5 +1,4 @@
 import shutil
-import tempfile
 import threading
 from io import BytesIO
 from pathlib import Path
@@ -47,10 +46,10 @@ async def predict(file: UploadFile) -> dict:
             )
         result.append(instance_result)
 
-    status = model_manager.get_status()
+    model_status = model_manager.get_status()
     return {
         "predictions": result,
-        "version": status["version"],
+        "version": model_status["version"],
     }
 
 
@@ -115,58 +114,32 @@ async def train(file: UploadFile) -> dict:
             detail="Training already in progress",
         )
 
-    temp_dir = tempfile.mkdtemp()
-    try:
-        temp_path = Path(temp_dir)
-        zip_path = temp_path / "training_data.zip"
+    training_data_dir = Path("training_data")
+    training_data_dir.mkdir(exist_ok=True)
+    zip_path = training_data_dir / "training_data.zip"
 
-        data = await file.read()
-        _validate_data_received(data)
-        zip_path.write_bytes(data)
-        _validate_zip_written(zip_path)
+    data = await file.read()
+    zip_path.write_bytes(data)
 
+    extract_dir = training_data_dir / "extracted"
+    if extract_dir.exists():
+        shutil.rmtree(extract_dir)
+    extract_dir.mkdir(parents=True, exist_ok=True)
+    shutil.unpack_archive(str(zip_path), str(extract_dir))
+
+    def train_model() -> None:
         try:
-            extract_dir = temp_path / "extracted"
-            extract_dir.mkdir(parents=True, exist_ok=True)
-            shutil.unpack_archive(str(zip_path), str(extract_dir))
-        except (OSError, RuntimeError) as e:
-            msg = f"Failed to extract ZIP file: {e!s}"
-            raise HTTPException(
-                status_code=400,
-                detail=msg,
-            ) from e
+            model_manager.train(extract_dir)
+        finally:
+            if extract_dir.exists():
+                shutil.rmtree(extract_dir)
+            if zip_path.exists():
+                zip_path.unlink()
 
-        def train_model() -> None:
-            try:
-                model_manager.train(extract_dir)
-            finally:
-                shutil.rmtree(temp_dir, ignore_errors=True)
+    thread = threading.Thread(target=train_model, daemon=True)
+    thread.start()
 
-        thread = threading.Thread(target=train_model, daemon=True)
-        thread.start()
-    except HTTPException:
-        shutil.rmtree(temp_dir, ignore_errors=True)
-        raise
-    else:
-        return {"message": "Training started"}
-
-
-def _validate_data_received(data: bytes) -> None:
-    if not data:
-        msg = "Empty file received"
-        raise HTTPException(
-            status_code=400,
-            detail=msg,
-        )
-
-
-def _validate_zip_written(zip_path: Path) -> None:
-    if not zip_path.exists() or zip_path.stat().st_size == 0:
-        msg = "Failed to write ZIP file"
-        raise HTTPException(
-            status_code=400,
-            detail=msg,
-        )
+    return {"message": "Training started"}
 
 
 @app.get("/status")
