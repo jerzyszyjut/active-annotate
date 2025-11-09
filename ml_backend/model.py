@@ -1,104 +1,145 @@
-from typing import Tuple, List, Optional
-import os
-import glob
-import datetime
-import torch
-import torch.nn as nn
-from torch import Tensor
-from torch.optim import Optimizer
-import pytorch_lightning as pl
-import torchvision.models as models
-from torchvision.models import ResNet18_Weights
-import torchvision.transforms as transforms
-import torchmetrics
-from torchmetrics import Metric
-from PIL import Image
-from abc import ABC
+import contextlib
 import logging
+from pathlib import Path
+
+import pytorch_lightning as pl
+import torch
+import torchmetrics
+from PIL import Image
+from torch import Tensor
+from torch import nn
+from torch.optim import Optimizer
+from torchvision import models
+from torchvision import transforms
+from torchvision.models import ResNet18_Weights
 
 logger = logging.getLogger(__name__)
 
+IMAGENET_MEAN = [0.485, 0.456, 0.406]
+IMAGENET_STD = [0.229, 0.224, 0.225]
 
-class BaseImageClassificationModel(ABC):
-    def predict(self, image: Image.Image) -> list[list[tuple[str, float]]]:
-        raise NotImplementedError("Subclasses must implement predict method")
 
-    def get_version(self) -> str:
-        raise NotImplementedError("Subclasses must implement get_version method")
+def get_transform_augmented():
+    """Get image transforms with data augmentation for training."""
+    return transforms.Compose(
+        [
+            transforms.Resize(256),
+            transforms.RandomCrop(224),
+            transforms.RandomHorizontalFlip(p=0.5),
+            transforms.RandomRotation(degrees=15),
+            transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2),
+            transforms.RandomAffine(degrees=0, translate=(0.1, 0.1)),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=IMAGENET_MEAN, std=IMAGENET_STD),
+        ],
+    )
 
-    def get_name(self) -> str:
-        raise NotImplementedError("Subclasses must implement get_name method")
+
+def get_transform():
+    """Get image transforms for inference (no augmentation)."""
+    return transforms.Compose(
+        [
+            transforms.Resize(256),
+            transforms.CenterCrop(224),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=IMAGENET_MEAN, std=IMAGENET_STD),
+        ],
+    )
 
 
 class ResNetImageClassificationMLModel(
-    pl.LightningModule, BaseImageClassificationModel
+    pl.LightningModule,
 ):
     def __init__(
         self,
-        num_classes: int = 3,
-        learning_rate: float = 1e-3,
-        weights_dir: str = "model_weights",
-        class_names: Optional[List[str]] = None,
+        save_weights_dir: Path,
+        num_classes: int = 1000,
+        weights: str | None = None,
     ) -> None:
         super().__init__()
-        self.save_hyperparameters()
         self.num_classes: int = num_classes
-        self.learning_rate: float = learning_rate
-        self.weights_dir: str = weights_dir
-        self.class_names: List[str] = class_names or [
-            f"class_{i}" for i in range(num_classes)
-        ]
-
-        # Create weights directory if it doesn't exist
-        os.makedirs(self.weights_dir, exist_ok=True)
-
+        self.save_weights_dir: Path = save_weights_dir
         self.model: models.ResNet = models.resnet18(
-            weights=ResNet18_Weights.IMAGENET1K_V1
+            weights=ResNet18_Weights.IMAGENET1K_V1 if weights is None else weights,
         )
-
-        # Initialize criterion and metrics
-        self.criterion: nn.CrossEntropyLoss = nn.CrossEntropyLoss()
-        self.train_acc: Metric = torchmetrics.Accuracy(
-            task="multiclass", num_classes=num_classes
+        # Label smoothing reduces overconfidence and mode collapse
+        self.criterion: nn.CrossEntropyLoss = nn.CrossEntropyLoss(
+            label_smoothing=0.1,
         )
-        self.val_acc: Metric = torchmetrics.Accuracy(
-            task="multiclass", num_classes=num_classes
-        )
-        self.test_acc: Metric = torchmetrics.Accuracy(
-            task="multiclass", num_classes=num_classes
+        self.train_acc: torchmetrics.Metric = torchmetrics.Accuracy(
+            task="multiclass",
+            num_classes=num_classes,
         )
 
         self.set_num_classes(num_classes)
 
-        self._load_latest_weights()
+    def set_num_classes(self, new_num_classes: int) -> None:
+        # Determine in_features from current classifier. The fc attribute
+        # may be either an nn.Linear or an nn.Sequential containing a
+        # dropout and a linear layer. Search for the Linear module.
+        in_features = None
+        fc = self.model.fc
+        if isinstance(fc, nn.Linear):
+            in_features = fc.in_features
+        elif isinstance(fc, nn.Sequential):
+            for module in fc:
+                if isinstance(module, nn.Linear):
+                    in_features = module.in_features
+                    break
 
-    def _load_latest_weights(self) -> None:
-        """Load the latest weights file from the weights directory"""
-        try:
-            weight_pattern = os.path.join(self.weights_dir, "*.pth")
-            weight_files = glob.glob(weight_pattern)
+        if in_features is None:
+            # As a fallback, infer by forwarding a dummy tensor with the
+            # conv backbone and measuring the feature size.
+            with torch.no_grad():
+                dummy = torch.zeros((1, 3, 224, 224))
+                # Temporarily replace fc with Identity to get features
+                orig_fc = self.model.fc
+                try:
+                    self.model.fc = nn.Identity()
+                    out = self.model(dummy)
+                    # out shape is (1, C)
+                    in_features = out.shape[1]
+                finally:
+                    self.model.fc = orig_fc
 
-            if weight_files:
-                newest_file = max(weight_files, key=os.path.getmtime)
-                print(f"Loading latest weights from {newest_file}")
-                self.load_weights(newest_file)
-                self._set_loaded_weights_path(newest_file)
-                return
+        # Build a new classifier: dropout followed by linear
+        linear = nn.Linear(in_features, new_num_classes)
+        self.model.fc = nn.Sequential(nn.Dropout(p=0.5), linear)
+        self.num_classes = new_num_classes
+        # Recreate accuracy metric with the new number of classes
+        self.train_acc = torchmetrics.Accuracy(
+            task="multiclass",
+            num_classes=new_num_classes,
+        )
 
-            print(
-                f"No existing weights found in {self.weights_dir}, using pretrained ResNet weights"
-            )
-            self._set_loaded_weights_path("pretrained_resnet")
+        # Ensure classifier is on the same device (device may not be set yet)
+        with contextlib.suppress(Exception):
+            self.model.fc.to(self.device)
 
-        except Exception as e:
-            print(f"Warning: Failed to load weights: {e}")
-            print("Continuing with pretrained ResNet weights")
-            self._set_loaded_weights_path("pretrained_resnet")
+    def reset_backbone_to_imagenet(
+        self,
+        weights: ResNet18_Weights | None = ResNet18_Weights.IMAGENET1K_V1,
+    ) -> None:
+        """Reload ResNet18 backbone weights (ImageNet) and reattach classifier.
+
+        This replaces `self.model` with a fresh ResNet and reattaches a
+        classifier for `self.num_classes`. Useful to start training from a
+        consistent ImageNet-initialized backbone each training run.
+        """
+        # Create fresh resnet with requested weights
+        self.model = models.resnet18(weights=weights)
+        # Re-attach classifier for the current number of classes
+        # set_num_classes will add dropout + linear
+        self.set_num_classes(self.num_classes)
+
+    def save_weights(self, version: int) -> None:
+        filepath = self.save_weights_dir / f"model_weights_v{version}.pth"
+        torch.save(self.state_dict(), filepath)
 
     def forward(self, x: Tensor) -> Tensor:
         return self.model(x)
 
-    def training_step(self, batch: Tuple[Tensor, Tensor], batch_idx: int) -> Tensor:
+    def training_step(self, batch: tuple[Tensor, Tensor]) -> Tensor:
         x, y = batch
         logits = self(x)
 
@@ -111,227 +152,20 @@ class ResNetImageClassificationMLModel(
         self.log("train_acc", train_acc, prog_bar=True, on_epoch=True)
         return loss
 
-    def validation_step(self, batch: Tuple[Tensor, Tensor], batch_idx: int) -> Tensor:
-        x, y = batch
-        logits = self(x)
-
-        loss = self.criterion(logits, y)
-
-        preds = torch.argmax(logits, dim=1)
-
-        val_acc = self.val_acc(preds, y)
-
-        self.log("val_loss", loss, prog_bar=True, on_epoch=True)
-        self.log("val_acc", val_acc, prog_bar=True, on_epoch=True)
-        return loss
-
-    def test_step(self, batch: Tuple[Tensor, Tensor], batch_idx: int) -> Tensor:
-        x, y = batch
-        logits = self(x)
-
-        loss = self.criterion(logits, y)
-
-        preds = torch.argmax(logits, dim=1)
-        test_acc = self.test_acc(preds, y)
-
-        self.log("test_loss", loss, prog_bar=True, on_epoch=True)
-        self.log("test_acc", test_acc, prog_bar=True, on_epoch=True)
-        return loss
-
     def configure_optimizers(self) -> Optimizer:
-        optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate)
-        return optimizer
+        return torch.optim.Adam(self.parameters(), lr=1e-3)
 
-    def predict(self, image: Image.Image) -> list[list[tuple[str, float]]]:
-        """
-        Predict class and confidence for an image.
-
-        Returns:
-            tuple: (predicted_class_name, confidence_score)
-        """
+    def predict(self, image: Image.Image) -> Tensor:
         self.eval()
 
-        transform = transforms.Compose(
-            [
-                transforms.Resize(256),
-                transforms.CenterCrop(224),
-                transforms.ToTensor(),
-                transforms.Normalize(
-                    mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
-                ),
-            ]
-        )
+        if image.mode != "RGB":
+            image = image.convert("RGB")
 
-        image_tensor: Tensor = transform(image)  # pyright: ignore[reportAssignmentType]
+        transform = get_transform()
 
+        image_tensor = transform(image)
         image_tensor = image_tensor.unsqueeze(0)
 
         with torch.no_grad():
             output = self.forward(image_tensor)
-            probabilities = torch.softmax(output, dim=1)
-
-        # Return class name and confidences
-        results = [
-            [(self.class_names[i], prob) for i, prob in enumerate(instance_probabilities)]
-            for instance_probabilities in probabilities
-        ]
-
-        return results
-
-    def get_version(self) -> str:
-        return "1.0.0"
-
-    def get_name(self) -> str:
-        return "ResNetImageClassificactionMLModel"
-
-    def set_num_classes(self, new_num_classes: int) -> None:
-        if self.num_classes != new_num_classes:
-            logger.info(
-                f"Updating model from {self.num_classes} to {new_num_classes} classes"
-            )
-            in_features: int = self.model.fc.in_features
-            self.model.fc = nn.Linear(in_features, new_num_classes)
-            self.num_classes = new_num_classes
-
-            # Update metrics for new number of classes
-            self.train_acc = torchmetrics.Accuracy(
-                task="multiclass", num_classes=new_num_classes
-            )
-            self.val_acc = torchmetrics.Accuracy(
-                task="multiclass", num_classes=new_num_classes
-            )
-            self.test_acc = torchmetrics.Accuracy(
-                task="multiclass", num_classes=new_num_classes
-            )
-        else:
-            # Even if num_classes is the same, we still need to update the final layer
-            in_features: int = self.model.fc.in_features
-            self.model.fc = nn.Linear(in_features, new_num_classes)
-
-    def save_weights(self, filename: str | None = None) -> str:
-        """Save model weights and class names to the weights directory with timestamp"""
-        if filename is None:
-            # Generate timestamped filename
-            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"model_weights_{timestamp}.pth"
-
-        filepath = os.path.join(self.weights_dir, filename)
-
-        # Save both state dict and class names
-        save_data = {
-            "state_dict": self.state_dict(),
-            "class_names": self.class_names,
-            "num_classes": self.num_classes,
-        }
-        torch.save(save_data, filepath)
-        print(f"Weights and class names saved to {filepath}")
-        return filepath
-
-    def load_weights(self, path: str) -> None:
-        """Load model weights and class names from file"""
-        checkpoint = torch.load(path, map_location="cpu")
-
-        # Handle both old format (just state_dict) and new format (with class_names)
-        if isinstance(checkpoint, dict) and "state_dict" in checkpoint:
-            self.load_state_dict(checkpoint["state_dict"])
-            if "class_names" in checkpoint:
-                self.class_names = checkpoint["class_names"]
-                logger.info(f"Loaded class names: {self.class_names}")
-            if "num_classes" in checkpoint:
-                saved_num_classes = checkpoint["num_classes"]
-                if saved_num_classes != self.num_classes:
-                    logger.info(
-                        f"Updating num_classes from {self.num_classes} to {saved_num_classes}"
-                    )
-                    self.set_num_classes(saved_num_classes)
-        else:
-            # Old format - just state dict
-            self.load_state_dict(checkpoint)
-            logger.warning("Loaded weights in old format - class names not available")
-
-        self.eval()
-        self._set_loaded_weights_path(path)
-
-    def get_training_status(self) -> dict:
-        return {
-            "model_name": self.get_name(),
-            "version": self.get_version(),
-            "num_classes": self.num_classes,
-            "learning_rate": self.learning_rate,
-            "is_training": self.training,
-            "weights_loaded_from": getattr(self, "_loaded_weights_path", "pretrained"),
-        }
-
-    def _set_loaded_weights_path(self, path: str) -> None:
-        self._loaded_weights_path = path
-
-    def reload_latest_weights(self) -> str:
-        """Manually reload the latest weights and return the path that was loaded"""
-        old_path = getattr(self, "_loaded_weights_path", "unknown")
-        self._load_latest_weights()
-        new_path = getattr(self, "_loaded_weights_path", "unknown")
-        return f"Reloaded weights: {old_path} -> {new_path}"
-
-    def list_available_weights(self) -> list[dict]:
-        """List all available weight files with their metadata"""
-        weight_pattern = os.path.join(self.weights_dir, "*.pth")
-        weight_files = glob.glob(weight_pattern)
-
-        weights_info = []
-        for filepath in weight_files:
-            filename = os.path.basename(filepath)
-            stat = os.stat(filepath)
-            weights_info.append(
-                {
-                    "filename": filename,
-                    "filepath": filepath,
-                    "size_bytes": stat.st_size,
-                    "modified_time": datetime.datetime.fromtimestamp(
-                        stat.st_mtime
-                    ).isoformat(),
-                    "is_current": filepath == getattr(self, "_loaded_weights_path", ""),
-                }
-            )
-
-        # Sort by modification time, newest first
-        weights_info.sort(key=lambda x: x["modified_time"], reverse=True)
-        return weights_info
-
-    def get_weights_directory_info(self) -> dict:
-        """Get information about the weights directory"""
-        weights_list = self.list_available_weights()
-        return {
-            "weights_directory": self.weights_dir,
-            "total_weight_files": len(weights_list),
-            "current_loaded_weights": getattr(
-                self, "_loaded_weights_path", "pretrained"
-            ),
-            "available_weights": weights_list,
-        }
-
-    def cleanup_old_weights(self, keep_count: int = 5) -> dict:
-        """Keep only the newest N weight files, delete older ones"""
-        weights_list = self.list_available_weights()
-
-        if len(weights_list) <= keep_count:
-            return {
-                "message": f"No cleanup needed. Only {len(weights_list)} weights found (keeping {keep_count})",
-                "deleted_files": [],
-            }
-
-        # Sort by modification time (newest first) and get files to delete
-        weights_to_delete = weights_list[keep_count:]
-        deleted_files = []
-
-        for weight_info in weights_to_delete:
-            try:
-                os.remove(weight_info["filepath"])
-                deleted_files.append(weight_info["filename"])
-                print(f"Deleted old weights: {weight_info['filename']}")
-            except Exception as e:
-                print(f"Failed to delete {weight_info['filename']}: {e}")
-
-        return {
-            "message": f"Cleanup completed. Kept {keep_count} newest weights, deleted {len(deleted_files)} old weights",
-            "deleted_files": deleted_files,
-        }
+            return torch.softmax(output, dim=1)

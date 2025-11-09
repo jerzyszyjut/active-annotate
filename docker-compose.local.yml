@@ -1,0 +1,109 @@
+volumes:
+  active_annotate_local_postgres_data: {}
+  active_annotate_local_postgres_data_backups: {}
+  active_annotate_local_redis_data: {}
+  label_studio_data: {}
+  ml_backend_data: {}
+
+services:
+  django: &django
+    build:
+      context: .
+      dockerfile: ./compose/local/django/Dockerfile
+    image: active_annotate_local_django
+    container_name: active_annotate_local_django
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - /app/.venv
+      - .:/app:z
+    env_file:
+      - ./.envs/.local/.django
+      - ./.envs/.local/.postgres
+    ports:
+      - "8000:8000"
+    command: /start
+    networks:
+      default:
+        aliases:
+          - django.django
+          - django
+
+  postgres:
+    build:
+      context: .
+      dockerfile: ./compose/production/postgres/Dockerfile
+    image: active_annotate_production_postgres
+    container_name: active_annotate_local_postgres
+    volumes:
+      - active_annotate_local_postgres_data:/var/lib/postgresql/data
+      - active_annotate_local_postgres_data_backups:/backups
+    env_file:
+      - ./.envs/.local/.postgres
+
+  redis:
+    image: docker.io/redis:7.2
+    container_name: active_annotate_local_redis
+    volumes:
+      - active_annotate_local_redis_data:/data
+
+  celeryworker:
+    <<: *django
+    image: active_annotate_local_celeryworker
+    container_name: active_annotate_local_celeryworker
+    depends_on:
+      - redis
+      - postgres
+    ports: []
+    command: /start-celeryworker
+
+  celerybeat:
+    <<: *django
+    image: active_annotate_local_celerybeat
+    container_name: active_annotate_local_celerybeat
+    depends_on:
+      - redis
+      - postgres
+    ports: []
+    command: /start-celerybeat
+
+  flower:
+    <<: *django
+    image: active_annotate_local_flower
+    container_name: active_annotate_local_flower
+    ports:
+      - "5555:5555"
+    command: /start-flower
+
+  label_studio:
+    image: heartexlabs/label-studio:latest
+    container_name: active_annotate_local_label_studio
+    ports:
+      - "8080:8080"
+    volumes:
+      - label_studio_data:/label-studio/data
+    environment:
+      - LABEL_STUDIO_ENABLE_LEGACY_API_TOKEN=true
+      - DJANGO_ALLOWED_HOSTS=*,label_studio,localhost,127.0.0.1,label_studio:8080
+      - LABEL_STUDIO_PORT=8080
+    networks:
+      default:
+        aliases:
+          - label_studio
+          - label-studio
+
+#  ml_backend:
+#    build:
+#      context: ml_backend
+#      dockerfile: Dockerfile
+#    container_name: active_annotate_local_ml_backend
+#    ports:
+#      - "9090:9090"
+#    volumes:
+#      - ml_backend_data:/model_weights
+#    networks:
+#      default:
+#        aliases:
+#          - ml_backend
+#          - ml-backend

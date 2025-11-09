@@ -1,142 +1,80 @@
 name: CI
 
-on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+# Enable Buildkit and let compose use it to speed up image building
+env:
+  DOCKER_BUILDKIT: 1
+  COMPOSE_DOCKER_CLI_BUILD: 1
 
-permissions:
-  contents: read
-  pull-requests: write
+on:
+  pull_request:
+    branches: ['main']
+    paths-ignore: ['docs/**']
+
+  push:
+    branches: ['main']
+    paths-ignore: ['docs/**']
+
+concurrency:
+  group: ${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
 
 jobs:
-  lint:
+  linter:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.12"]
+    steps:
+      - name: Checkout Code Repository
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version-file: '.python-version'
+      # Consider using pre-commit.ci for open source project
+      - name: Run pre-commit
+        uses: pre-commit/action@v3.0.1
+
+  # With no caching at all the entire ci process takes 3m to complete!
+  pytest:
+    runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - name: Checkout Code Repository
+        uses: actions/checkout@v5
 
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and cache local backend
+        uses: docker/bake-action@v6
         with:
-          python-version: ${{ matrix.python-version }}
+          push: false
+          load: true
+          files: docker-compose.local.yml
+          targets: django
+          set: |
+            django.cache-from=type=gha,scope=django-cached-tests
+            django.cache-to=type=gha,scope=django-cached-tests,mode=max
+            postgres.cache-from=type=gha,scope=postgres-cached-tests
+            postgres.cache-to=type=gha,scope=postgres-cached-tests,mode=max
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install pipenv
-          pipenv install --dev
-
-      - name: Run ruff linting
-        run: |
-          pipenv run ruff check .
-
-  format:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.12"]
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+      - name: Build and cache docs
+        uses: docker/bake-action@v6
         with:
-          python-version: ${{ matrix.python-version }}
+          push: false
+          load: true
+          files: docker-compose.docs.yml
+          set: |
+            docs.cache-from=type=gha,scope=cached-docs
+            docs.cache-to=type=gha,scope=cached-docs,mode=max
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install pipenv
-          pipenv install --dev
+      - name: Check DB Migrations
+        run: docker compose -f docker-compose.local.yml run --rm django python manage.py makemigrations --check
 
-      - name: Run ruff formatting check
-        run: |
-          pipenv run ruff format --check .
+      - name: Run DB Migrations
+        run: docker compose -f docker-compose.local.yml run --rm django python manage.py migrate
 
-  type-check:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.12"]
+#      - name: Run Django Tests
+#        run: docker compose -f docker-compose.local.yml run django pytest
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ matrix.python-version }}
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install pipenv
-          pipenv install --dev
-
-      - name: Run pyright type checking
-        run: |
-          pipenv run pyright
-
-  # test:
-  #   runs-on: ubuntu-latest
-  #   strategy:
-  #     matrix:
-  #       python-version: ["3.12"]
-
-  #   steps:
-  #     - name: Checkout repository
-  #       uses: actions/checkout@v4
-
-  #     - name: Set up Python ${{ matrix.python-version }}
-  #       uses: actions/setup-python@v4
-  #       with:
-  #         python-version: ${{ matrix.python-version }}
-
-  #     - name: Install dependencies
-  #       run: |
-  #         python -m pip install --upgrade pip
-  #         pip install pipenv
-  #         pipenv install --dev
-
-  #     - name: Run tests with coverage
-  #       run: |
-  #         pipenv run pytest tests/ -v --cov=app --cov-report=xml --cov-report=term-missing --cov-report=html --cov-fail-under=70
-
-  #     - name: Upload coverage reports
-  #       uses: actions/upload-artifact@v4
-  #       if: always()
-  #       with:
-  #         name: coverage-reports
-  #         path: |
-  #           coverage.xml
-  #           htmlcov/
-  #         retention-days: 30
-
-  #     - name: Coverage Report
-  #       uses: irongut/CodeCoverageSummary@v1.3.0
-  #       with:
-  #         filename: coverage.xml
-  #         badge: true
-  #         fail_below_min: true
-  #         format: markdown
-  #         hide_branch_rate: false
-  #         hide_complexity: true
-  #         indicators: true
-  #         output: both
-  #         thresholds: "60 80"
-
-  #     - name: Add Coverage PR Comment
-  #       uses: marocchino/sticky-pull-request-comment@v2
-  #       if: github.event_name == 'pull_request'
-  #       with:
-  #         recreate: true
-  #         path: code-coverage-results.md
+      - name: Tear down the Stack
+        run: docker compose -f docker-compose.local.yml down

@@ -1,22 +1,9 @@
 services:
   ml-backend:
     build: .
-    container_name: ml-backend-container
+    container_name: active_annotate_local_ml_backend
     ports:
-      - "8000:8000"
+      - "9090:9090"
     volumes:
-      - ml-backend-weights:/app/model_weights
-    environment:
-      - PYTHONUNBUFFERED=1
-      - PORT=8000
+      - ./model_weights:/model_weights
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-
-volumes:
-  ml-backend-weights:
-    driver: local
