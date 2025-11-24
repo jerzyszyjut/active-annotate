@@ -52,9 +52,18 @@ class LabelStudioIntegrationViewSet(GenericViewSet):
 
         data = serializer.validated_data
         dataset_id = data["dataset_id"]
-        ClassificationDataset.objects.get(pk=dataset_id)
+        dataset = ClassificationDataset.objects.get(pk=dataset_id)
+        
+        if dataset.state == "in-progress":
+            return Response({"status": "active learning loop is in progress"})
+        elif dataset.state == "finished":
+            return Response(
+                {"status": "Active learning loop is finished. Export annotations or create a new project."}
+            )
 
         start_active_learning_loop.delay(dataset_id=dataset_id)
+        
+        dataset.save()
 
         return Response({"status": "active learning started"})
 

@@ -43,4 +43,8 @@ def step_in_active_learning_loop(dataset_id: int, project_id: int) -> None:
 
     ls_service = LabelStudioService(dataset)
     ls_service.delete_project(project_id)
-    ls_service.create_active_learning_project()
+
+    if ls_service.is_stop_condition_met():
+        dataset.state = "finished"
+    else:
+        ls_service.create_active_learning_project()

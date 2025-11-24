@@ -30,10 +30,17 @@ class Dataset(Model):
         default=16,
         help_text=_("Number of datapoints to process in each batch."),
     )
-    uncertainty_strategy = models.CharField(
+    uncertainty_strategy = CharField(
         max_length=50,
         choices=[("entropy", "Entropy"), ("least-confidence", "Least confidence"), ("margin", "Margin")],
         default="entropy",
+    )
+    epoch = PositiveIntegerField(_("Epoch"), default=0)
+    max_epochs = PositiveIntegerField(_("Max epochs"))
+    state = CharField(
+        _("State"),
+        choices=[("not-started", "Not started"), ("in-progress", "In progress"), ("finished", "Finished")],
+        default="Not started"
     )
 
     class Meta:

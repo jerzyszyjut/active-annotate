@@ -248,6 +248,9 @@ class LabelStudioService:
                 ],
             ),
         )
+    
+    def is_stop_condition_met(self):
+        return self.dataset.epoch >= self.dataset.max_epochs
 
     def create_active_learning_project(
         self,
@@ -267,6 +270,9 @@ class LabelStudioService:
         )
 
         self.import_datapoints(project.id)
+
+        self.dataset.epoch += 1
+        self.dataset.state = "In progress"
 
     def import_datapoints(self, project_id: int):
         ml_backend_service = MLBackendService(self.dataset)
