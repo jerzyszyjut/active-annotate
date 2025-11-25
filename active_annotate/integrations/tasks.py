@@ -46,5 +46,6 @@ def step_in_active_learning_loop(dataset_id: int, project_id: int) -> None:
 
     if ls_service.is_stop_condition_met():
         dataset.state = "finished"
+        dataset.save()
     else:
         ls_service.create_active_learning_project()

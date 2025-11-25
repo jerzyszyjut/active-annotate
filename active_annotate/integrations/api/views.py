@@ -76,7 +76,7 @@ class LabelStudioIntegrationViewSet(GenericViewSet):
 
         datapoint = ClassificationDatapoint.objects.get(pk=data.task.inner_id)
         label = ClassificationLabel.objects.get(
-            dataset=data.dataset,
+            dataset=datapoint.dataset,
             class_label=data.annotation.result[-1].value.choices[0],
         )
 
