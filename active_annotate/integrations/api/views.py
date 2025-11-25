@@ -55,17 +55,15 @@ class LabelStudioIntegrationViewSet(GenericViewSet):
         dataset = ClassificationDataset.objects.get(pk=dataset_id)
         
         if dataset.state == "in-progress":
-            return Response({"status": "active learning loop is in progress"})
+            return Response({"status": "Active learning loop is in progress"})
         elif dataset.state == "finished":
             return Response(
                 {"status": "Active learning loop is finished. Export annotations or create a new project."}
             )
 
         start_active_learning_loop.delay(dataset_id=dataset_id)
-        
-        dataset.save()
 
-        return Response({"status": "active learning started"})
+        return Response({"status": "Active learning started"})
 
     @action(
         detail=False,
@@ -78,6 +76,7 @@ class LabelStudioIntegrationViewSet(GenericViewSet):
 
         datapoint = ClassificationDatapoint.objects.get(pk=data.task.inner_id)
         label = ClassificationLabel.objects.get(
+            dataset=data.dataset,
             class_label=data.annotation.result[-1].value.choices[0],
         )
 

@@ -93,17 +93,17 @@ services:
           - label_studio
           - label-studio
 
-#  ml_backend:
-#    build:
-#      context: ml_backend
-#      dockerfile: Dockerfile
-#    container_name: active_annotate_local_ml_backend
-#    ports:
-#      - "9090:9090"
-#    volumes:
-#      - ml_backend_data:/model_weights
-#    networks:
-#      default:
-#        aliases:
-#          - ml_backend
-#          - ml-backend
+  ml_backend:
+   build:
+     context: ml_backend
+     dockerfile: Dockerfile
+   container_name: active_annotate_local_ml_backend
+   ports:
+     - "9090:9090"
+   volumes:
+     - ml_backend_data:/model_weights
+   networks:
+     default:
+       aliases:
+         - ml_backend
+         - ml-backend

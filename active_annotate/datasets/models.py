@@ -40,7 +40,7 @@ class Dataset(Model):
     state = CharField(
         _("State"),
         choices=[("not-started", "Not started"), ("in-progress", "In progress"), ("finished", "Finished")],
-        default="Not started"
+        default="not-started"
     )
 
     class Meta:

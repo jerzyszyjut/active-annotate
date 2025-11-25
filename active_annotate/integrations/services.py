@@ -272,7 +272,8 @@ class LabelStudioService:
         self.import_datapoints(project.id)
 
         self.dataset.epoch += 1
-        self.dataset.state = "In progress"
+        self.dataset.state = "in-progress"
+        self.dataset.save()
 
     def import_datapoints(self, project_id: int):
         ml_backend_service = MLBackendService(self.dataset)
