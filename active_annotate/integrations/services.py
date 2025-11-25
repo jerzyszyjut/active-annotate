@@ -4,6 +4,7 @@ import random
 import shutil
 import tempfile
 from pathlib import Path
+from typing import Callable
 
 import httpx
 from django.db.models.enums import TextChoices
@@ -107,7 +108,11 @@ class MLBackendService:
 class ActiveLearningService:
     def __init__(self, dataset: ClassificationDataset):
         self.dataset = dataset
-        self.uncertainty_strategy = self._entropy_uncertainty
+        self.uncertainty_strategy = {
+            "entropy": ActiveLearningService._entropy_uncertainty,
+            "least-confidence": ActiveLearningService._least_confidence_uncertainty,
+            "margin": ActiveLearningService._margin_uncertainty,
+        }.get(dataset.uncertainty_strategy, ActiveLearningService._entropy_uncertainty)
 
     @staticmethod
     def _entropy_uncertainty(predictions: list[ClassificationPrediction]) -> float:
@@ -128,6 +133,46 @@ class ActiveLearningService:
 
         max_entropy = math.log(len(probabilities))
         return entropy / max_entropy if max_entropy > 0 else 0.0
+    
+    @staticmethod
+    def _least_confidence_uncertainty(predictions: list[ClassificationPrediction]) -> float:
+        if not predictions:
+            return 1.0
+
+        confidences = [p.confidence for p in predictions if p.confidence is not None]
+
+        if not confidences:
+            return 1.0
+
+        total_confidence = sum(confidences)
+        if total_confidence == 0:
+            return 1.0
+
+        probabilities = [conf / total_confidence for conf in confidences]
+        
+        return 1.0 - max(probabilities)
+
+    @staticmethod
+    def _margin_uncertainty(predictions: list[ClassificationPrediction]) -> float:
+        if not predictions:
+            return 1.0
+
+        confidences = [p.confidence for p in predictions if p.confidence is not None]
+
+        if not confidences:
+            return 1.0
+
+        total_confidence = sum(confidences)
+        if total_confidence == 0:
+            return 1.0
+
+        probabilities = [conf / total_confidence for conf in confidences]
+        probabilities.sort(reverse=True)
+
+        if len(probabilities) < 2:
+            return 1.0
+        
+        return 1.0 - (probabilities[0] - probabilities[1])
 
     def set_uncertainty_strategy(self, strategy_func):
         self.uncertainty_strategy = strategy_func
@@ -203,6 +248,9 @@ class LabelStudioService:
                 ],
             ),
         )
+    
+    def is_stop_condition_met(self):
+        return self.dataset.epoch >= self.dataset.max_epochs
 
     def create_active_learning_project(
         self,
@@ -222,6 +270,10 @@ class LabelStudioService:
         )
 
         self.import_datapoints(project.id)
+
+        self.dataset.epoch += 1
+        self.dataset.state = "in-progress"
+        self.dataset.save()
 
     def import_datapoints(self, project_id: int):
         ml_backend_service = MLBackendService(self.dataset)

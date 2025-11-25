@@ -79,7 +79,7 @@ just manage createsuperuser
 The services will be available at:
 
 - **API**: `http://localhost:8000`
-- **API Docs (Swagger)**: `http://localhost:8000/api/schema/swagger/`
+- **API Docs (Swagger)**: `http://localhost:8000/api/docs/`
 - **API Docs (ReDoc)**: `http://localhost:8000/api/schema/redoc/`
 - **Admin Panel**: `http://localhost:8000/admin`
 - **MinIO Console**: `http://localhost:9001` (minioadmin / minioadmin)

@@ -133,3 +133,4 @@ class ClassificationDatasetSerializer(ModelSerializer):
     class Meta:
         model = ClassificationDataset
         fields = "__all__"
+        read_only_fields = ("epoch", "state")
