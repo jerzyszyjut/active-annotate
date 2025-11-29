@@ -21,6 +21,11 @@ from django.utils.translation import gettext_lazy as _
 
 
 class Dataset(Model):
+    class UncertaintyStrategy(models.TextChoices):
+        ENTROPY = "entropy", "Entropy"
+        LEAST_CONFIDENCE = "least-confidence", "Least confidence"
+        MARGIN = "margin", "Margin"
+
     name = CharField(_("Name"), max_length=255)
     label_studio_url = CharField(_("Label Studio URL"), max_length=255)
     label_studio_api_key = CharField(_("Label Studio API Key"), max_length=255)
@@ -32,8 +37,8 @@ class Dataset(Model):
     )
     uncertainty_strategy = CharField(
         max_length=50,
-        choices=[("entropy", "Entropy"), ("least-confidence", "Least confidence"), ("margin", "Margin")],
-        default="entropy",
+        choices=UncertaintyStrategy.choices,
+        default=UncertaintyStrategy.ENTROPY,
     )
     epoch = PositiveIntegerField(_("Epoch"), default=0)
     max_epochs = PositiveIntegerField(_("Max epochs"))
