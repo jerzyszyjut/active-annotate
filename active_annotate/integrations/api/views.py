@@ -3,7 +3,7 @@ from drf_spectacular.utils import OpenApiResponse
 from drf_spectacular.utils import extend_schema
 from drf_spectacular.utils import extend_schema_view
 from rest_framework.decorators import action
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 
@@ -37,11 +37,10 @@ from active_annotate.integrations.tasks import step_in_active_learning_loop
     ),
 )
 class LabelStudioIntegrationViewSet(GenericViewSet):
-    permission_classes = (AllowAny,)
     @action(
         detail=False,
         methods=["post"],
-        permission_classes=[AllowAny],
+        permission_classes=[IsAuthenticated],
         url_path="start-active-learning",
     )
     def start_active_learning(self, request):
