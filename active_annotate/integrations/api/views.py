@@ -37,6 +37,7 @@ from active_annotate.integrations.tasks import step_in_active_learning_loop
     ),
 )
 class LabelStudioIntegrationViewSet(GenericViewSet):
+    permission_classes = (AllowAny,)
     @action(
         detail=False,
         methods=["post"],
