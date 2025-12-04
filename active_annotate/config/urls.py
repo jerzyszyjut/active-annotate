@@ -6,8 +6,8 @@ from django.urls import path
 from django.views import defaults as default_views
 from drf_spectacular.views import SpectacularAPIView
 from drf_spectacular.views import SpectacularSwaggerView
-from rest_framework.permissions import AllowAny
 from rest_framework.authtoken.views import obtain_auth_token
+from rest_framework.permissions import AllowAny
 
 urlpatterns = [
     # Django Admin, use {% url 'admin:index' %}
@@ -24,10 +24,17 @@ urlpatterns += [
     path("api/", include("active_annotate.config.api_router")),
     # DRF auth token
     path("api/auth-token/", obtain_auth_token, name="obtain_auth_token"),
-    path("api/schema/", SpectacularAPIView.as_view(permission_classes=[AllowAny]), name="api-schema"),
+    path(
+        "api/schema/",
+        SpectacularAPIView.as_view(permission_classes=[AllowAny]),
+        name="api-schema",
+    ),
     path(
         "api/docs/",
-        SpectacularSwaggerView.as_view(url_name="api-schema", permission_classes=[AllowAny]),
+        SpectacularSwaggerView.as_view(
+            url_name="api-schema",
+            permission_classes=[AllowAny],
+        ),
         name="api-docs",
     ),
     path("api/data/", include("active_annotate.datasets.urls", namespace="datasets")),

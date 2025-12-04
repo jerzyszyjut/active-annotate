@@ -3,7 +3,8 @@ from drf_spectacular.utils import OpenApiResponse
 from drf_spectacular.utils import extend_schema
 from drf_spectacular.utils import extend_schema_view
 from rest_framework.decorators import action
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import AllowAny
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 
@@ -53,12 +54,17 @@ class LabelStudioIntegrationViewSet(GenericViewSet):
         data = serializer.validated_data
         dataset_id = data["dataset_id"]
         dataset = ClassificationDataset.objects.get(pk=dataset_id)
-        
+
         if dataset.state == "in-progress":
             return Response({"status": "Active learning loop is in progress"})
-        elif dataset.state == "finished":
+        if dataset.state == "finished":
             return Response(
-                {"status": "Active learning loop is finished. Export annotations or create a new project."}
+                {
+                    "status": (
+                        "Active learning loop is finished. "
+                        "Export annotations or create a new project."
+                    ),
+                },
             )
 
         start_active_learning_loop.delay(dataset_id=dataset_id)

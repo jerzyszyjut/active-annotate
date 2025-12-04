@@ -4,7 +4,6 @@ import random
 import shutil
 import tempfile
 from pathlib import Path
-from typing import Callable
 
 import httpx
 from django.db.models.enums import TextChoices
@@ -133,9 +132,11 @@ class ActiveLearningService:
 
         max_entropy = math.log(len(probabilities))
         return entropy / max_entropy if max_entropy > 0 else 0.0
-    
+
     @staticmethod
-    def _least_confidence_uncertainty(predictions: list[ClassificationPrediction]) -> float:
+    def _least_confidence_uncertainty(
+        predictions: list[ClassificationPrediction],
+    ) -> float:
         if not predictions:
             return 1.0
 
@@ -149,7 +150,7 @@ class ActiveLearningService:
             return 1.0
 
         probabilities = [conf / total_confidence for conf in confidences]
-        
+
         return 1.0 - max(probabilities)
 
     @staticmethod
@@ -169,9 +170,9 @@ class ActiveLearningService:
         probabilities = [conf / total_confidence for conf in confidences]
         probabilities.sort(reverse=True)
 
-        if len(probabilities) < 2:
+        if len(probabilities) < 2:  # noqa: PLR2004
             return 1.0
-        
+
         return 1.0 - (probabilities[0] - probabilities[1])
 
     def set_uncertainty_strategy(self, strategy_func):
@@ -248,7 +249,7 @@ class LabelStudioService:
                 ],
             ),
         )
-    
+
     def is_stop_condition_met(self):
         return self.dataset.epoch >= self.dataset.max_epochs
 
