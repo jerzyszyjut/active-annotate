@@ -28,6 +28,7 @@ def user():
 @pytest.mark.django_db
 class TestDatasetWorkflow:
     def test_complete_dataset_workflow(self, api_client, user):
+        api_client.force_authenticate(user=user)
         dataset_data = {
             "name": "Integration Test Dataset",
             "label_studio_url": "http://localhost:8080",
@@ -108,6 +109,7 @@ class TestDatasetWorkflow:
 @pytest.mark.django_db
 class TestPredictionWorkflow:
     def test_multiple_predictions_per_datapoint(self, api_client, user):
+        api_client.force_authenticate(user=user)
         dataset = ClassificationDataset.objects.create(
             name="Prediction Test Dataset",
             label_studio_url="http://localhost:8080",
