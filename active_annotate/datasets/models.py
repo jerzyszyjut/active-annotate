@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 from django.db.models import Case
 from django.db.models import Count
@@ -20,7 +21,7 @@ from django.db.models.functions import Coalesce
 from django.utils.translation import gettext_lazy as _
 
 
-class Dataset(Model):
+class ClassificationDataset(Model):
     class UncertaintyStrategy(models.TextChoices):
         ENTROPY = "entropy", "Entropy"
         LEAST_CONFIDENCE = "least-confidence", "Least confidence"
@@ -37,35 +38,33 @@ class Dataset(Model):
     )
     uncertainty_strategy = CharField(
         max_length=50,
-        choices=UncertaintyStrategy.choices,
-        default=UncertaintyStrategy.ENTROPY,
+        choices=[
+            ("entropy", "Entropy"),
+            ("least-confidence", "Least confidence"),
+            ("margin", "Margin"),
+        ],
+        default="entropy",
     )
     epoch = PositiveIntegerField(_("Epoch"), default=0)
     max_epochs = PositiveIntegerField(_("Max epochs"))
     state = CharField(
         _("State"),
-        choices=[("not-started", "Not started"), ("in-progress", "In progress"), ("finished", "Finished")],
-        default="not-started"
+        choices=[
+            ("not-started", "Not started"),
+            ("in-progress", "In progress"),
+            ("finished", "Finished"),
+        ],
+        default="not-started",
     )
-
-    class Meta:
-        abstract = True
+    owner = ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="datasets",
+        verbose_name=_("Owner"),
+    )
 
     def __str__(self):
         return self.name
-
-
-class Datapoint(Model):
-    class Meta:
-        abstract = True
-
-    def __str__(self):
-        return f"Datapoint {self.pk}"
-
-
-class ClassificationDataset(Dataset):
-    def __str__(self):
-        return f"Classification Dataset: {self.name}"
 
 
 class ClassificationLabel(Model):
@@ -96,7 +95,7 @@ class ClassificationDatapointQuerySet(models.QuerySet):
         )
 
 
-class ClassificationDatapoint(Datapoint):
+class ClassificationDatapoint(Model):
     file = FileField(_("File"))
     label = ForeignKey(
         ClassificationLabel,
@@ -117,7 +116,7 @@ class ClassificationDatapoint(Datapoint):
         return f"Datapoint {self.pk} in {self.dataset.name}"
 
 
-class ClassificationPrediction(Datapoint):
+class ClassificationPrediction(Model):
     datapoint = ForeignKey(
         ClassificationDatapoint,
         on_delete=models.CASCADE,
