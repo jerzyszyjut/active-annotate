@@ -310,3 +310,40 @@ class TestClassificationPredictionAPI:
         )
         assert response.status_code == status.HTTP_204_NO_CONTENT
         assert not ClassificationPrediction.objects.filter(id=prediction_id).exists()
+
+    def test_export_dataset(self, api_client, dataset, label, datapoint, user):
+        api_client.force_authenticate(user=user)
+
+        ClassificationPrediction.objects.create(
+            datapoint=datapoint,
+            predicted_label=label,
+            confidence=0.87,
+            model_version=1,
+        )
+
+        response = api_client.get(
+            f"/api/data/datasets/classification/{dataset.id}/export/",
+        )
+        assert response.status_code == status.HTTP_200_OK
+
+        data = response.json()
+
+        assert data["dataset"]["id"] == dataset.id
+        assert data["dataset"]["name"] == dataset.name
+        assert data["dataset"]["batch_size"] == dataset.batch_size
+        assert data["dataset"]["uncertainty_strategy"] == dataset.uncertainty_strategy
+
+        assert len(data["labels"]) == 1
+        assert data["labels"][0]["class_label"] == label.class_label
+        assert data["labels"][0]["class_index"] == label.class_index
+
+        assert len(data["datapoints"]) == 1
+        datapoint_data = data["datapoints"][0]
+        assert datapoint_data["id"] == datapoint.id
+        assert datapoint_data["file_url"] is not None
+
+        assert len(datapoint_data["predictions"]) == 1
+        prediction_data = datapoint_data["predictions"][0]
+        assert prediction_data["confidence"] == 0.87  # noqa: PLR2004
+        assert prediction_data["model_version"] == 1
+        assert prediction_data["predicted_label"]["class_label"] == label.class_label
